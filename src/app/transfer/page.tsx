@@ -2,18 +2,14 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, QrCode, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, QrCode } from "lucide-react";
+import QrScannerModal from "@/components/QrScannerModal";
 
 export default function TransferPage() {
   const [walletAddress, setWalletAddress] = useState("");
   const [amount, setAmount] = useState("");
   const [authMethod, setAuthMethod] = useState<"OTP" | "Google TOTP">("OTP");
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  const triggerToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
-  };
+  const [showScanner, setShowScanner] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,21 +21,22 @@ export default function TransferPage() {
       alert("Please enter a valid amount.");
       return;
     }
-    triggerToast(`Transfer request of ${amount} submitted using ${authMethod}!`);
   };
 
   return (
     <div className="relative flex flex-col w-full h-full min-h-screen bg-[#F0F2F5] overflow-x-hidden font-sans pb-12 select-none">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900/90 text-white px-4 py-2.5 rounded-full shadow-lg text-sm font-medium flex items-center space-x-2 transition-all duration-200 animate-in fade-in slide-in-from-top-4">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
+      {/* QR Scanner Modal */}
+      <QrScannerModal
+        isOpen={showScanner}
+        onClose={() => setShowScanner(false)}
+        onScan={(scannedAddress) => {
+          setWalletAddress(scannedAddress);
+          setShowScanner(false);
+        }}
+      />
 
       {/* Main Container */}
-      <main className="flex-1 px-4 pt-4 pb-8 max-w-[430px] mx-auto w-full space-y-5">
+      <main className="flex-1 px-4 pt-2 pb-8 max-w-[430px] mx-auto w-full space-y-5">
         {/* Top Header */}
         <header className="flex items-center space-x-3 py-1 mb-1">
           <Link
@@ -49,7 +46,7 @@ export default function TransferPage() {
           >
             <ArrowLeft className="w-6 h-6 stroke-[2.5]" />
           </Link>
-          <h1 className="text-[#1C82D9] font-bold text-[22px] tracking-tight">
+          <h1 className="text-[#1C82D9] text-[22px] tracking-tight">
             Transfer
           </h1>
         </header>
@@ -65,10 +62,10 @@ export default function TransferPage() {
             {/* TRX Box */}
             <div className="flex-1 bg-[#B2B8C6] rounded-[14px] py-3 px-2 flex flex-col items-center justify-center text-center text-white min-h-[78px]">
               <span className="font-bold text-[13px] tracking-wider">TRX</span>
-              <span className="font-extrabold text-[16px] tracking-tight mt-0.5">
+              <span className="font-abold text-[16px] tracking-tight mt-0.5 text-[#1C82D9]">
                 0
               </span>
-              <span className="text-[11px] font-semibold opacity-90 mt-0.5">
+              <span className="text-[11px] font-semibold opacity-90 mt-0.5 text-[#1C82D9]">
                 $0
               </span>
             </div>
@@ -76,7 +73,7 @@ export default function TransferPage() {
             {/* USDT Box */}
             <div className="flex-1 bg-[#B2B8C6] rounded-[14px] py-3 px-2 flex flex-col items-center justify-center text-center text-white min-h-[78px]">
               <span className="font-bold text-[13px] tracking-wider">USDT</span>
-              <span className="font-extrabold text-[16px] tracking-tight mt-0.5">
+              <span className=" text-[16px] tracking-tight mt-0.5 text-[#1C82D9]">
                 0
               </span>
             </div>
@@ -110,7 +107,7 @@ export default function TransferPage() {
               />
               <button
                 type="button"
-                onClick={() => triggerToast("QR Scanner activated")}
+                onClick={() => setShowScanner(true)}
                 className="bg-[#1C82D9] hover:bg-[#1875CD] active:bg-[#1466B8] text-white px-4 py-3.5 flex items-center justify-center shrink-0 cursor-pointer transition-colors rounded-r-full"
                 title="Scan QR Code"
               >
@@ -140,22 +137,20 @@ export default function TransferPage() {
             <button
               type="button"
               onClick={() => setAuthMethod("OTP")}
-              className={`flex-1 py-3 px-3 rounded-[14px] font-bold text-[14px] tracking-wide transition-all cursor-pointer text-center ${
-                authMethod === "OTP"
+              className={`flex-1 py-3 px-3 rounded-[14px] font-bold text-[14px] tracking-wide transition-all cursor-pointer text-center ${authMethod === "OTP"
                   ? "bg-[#1C82D9] text-white shadow-xs"
                   : "bg-[#B2B8C6] text-white hover:bg-[#A3A9B7]"
-              }`}
+                }`}
             >
               OTP
             </button>
             <button
               type="button"
               onClick={() => setAuthMethod("Google TOTP")}
-              className={`flex-1 py-3 px-3 rounded-[14px] font-bold text-[14px] tracking-wide transition-all cursor-pointer text-center ${
-                authMethod === "Google TOTP"
+              className={`flex-1 py-3 px-3 rounded-[14px] font-bold text-[14px] tracking-wide transition-all cursor-pointer text-center ${authMethod === "Google TOTP"
                   ? "bg-[#1C82D9] text-white shadow-xs"
                   : "bg-[#B2B8C6] text-white hover:bg-[#A3A9B7]"
-              }`}
+                }`}
             >
               Google TOTP
             </button>

@@ -6,12 +6,9 @@ import Image from "next/image";
 import { ArrowLeft, Search, X, Filter } from "lucide-react";
 import { FilterModal } from "@/components/FilterModal";
 
-export default function DepositHistoryPage() {
+export default function LevelIncomeReportPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilterModal, setShowFilterModal] = useState(false);
-
-  // Current formatted date e.g. "23 Jul 2026"
-  const formattedDate = "23 Jul 2026";
 
   return (
     <div className="relative flex flex-col w-full h-full min-h-screen bg-[#F0F2F5] overflow-x-hidden font-sans pb-12 select-none">
@@ -20,14 +17,14 @@ export default function DepositHistoryPage() {
         {/* Top Header */}
         <header className="flex items-center space-x-3 py-1 mb-4">
           <Link
-            href="/deposit"
+            href="/dashboard"
             className="text-[#1C82D9] hover:opacity-80 transition-opacity p-1 -ml-1 cursor-pointer"
             aria-label="Go Back"
           >
             <ArrowLeft className="w-6 h-6 stroke-[2.5]" />
           </Link>
           <h1 className="text-[#1C82D9] text-[22px] tracking-tight">
-            Deposit History
+            Level Income Report
           </h1>
         </header>
 
@@ -74,7 +71,7 @@ export default function DepositHistoryPage() {
           <div className="relative w-64 h-56 flex items-center justify-center">
             <Image
               src="/images/placeholder.png"
-              alt="History is not available"
+              alt="Transaction is not available"
               width={260}
               height={220}
               priority
@@ -82,10 +79,9 @@ export default function DepositHistoryPage() {
             />
           </div>
 
-          <div className="text-[#A0A8B6] font-extrabold text-[15px] tracking-tight mt-6 text-center leading-snug">
-            <p>History is not available for</p>
-            <p className="mt-0.5">{formattedDate}</p>
-          </div>
+          <p className="text-[#A0A8B6] font-extrabold text-[15px] tracking-tight mt-6 text-center">
+            Transaction is not available
+          </p>
         </div>
       </main>
 

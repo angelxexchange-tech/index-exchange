@@ -3,21 +3,15 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, ChevronDown, ChevronRight, ArrowLeftRight, CheckCircle2, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, ArrowLeftRight, X } from "lucide-react";
 
 export default function SellPage() {
   const [transferAmount, setTransferAmount] = useState("");
   const [expectedAmount, setExpectedAmount] = useState("");
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showTransferOutModal, setShowTransferOutModal] = useState(false);
   const [selectedCurrency, setSelectedCurrency] = useState("USDT");
 
   const rate = 115; // 1 USDT = 115 INR
-
-  const triggerToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
-  };
 
   const handleAmountChange = (val: string) => {
     setTransferAmount(val);
@@ -41,21 +35,13 @@ export default function SellPage() {
       alert("Please enter a valid flash sell amount.");
       return;
     }
-    triggerToast(`Successfully created sell order for ${transferAmount} USDT!`);
   };
 
   return (
     <div className="relative flex flex-col w-full h-full min-h-screen bg-[#F0F2F5] overflow-x-hidden font-sans pb-12 select-none">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900/90 text-white px-4 py-2.5 rounded-full shadow-lg text-sm font-medium flex items-center space-x-2 transition-all duration-200 animate-in fade-in slide-in-from-top-4">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
 
       {/* Main Container */}
-      <main className="flex-1 px-4 pt-4 pb-8 max-w-[430px] mx-auto w-full space-y-4">
+      <main className="flex-1 px-4 pt-2 pb-8 max-w-[430px] mx-auto w-full space-y-4">
         {/* Top Header */}
         <header className="flex items-center space-x-3 py-1 mb-2">
           <Link
@@ -65,7 +51,7 @@ export default function SellPage() {
           >
             <ArrowLeft className="w-6 h-6 stroke-[2.5]" />
           </Link>
-          <h1 className="text-[#1C82D9] font-bold text-[22px] tracking-tight">
+          <h1 className="text-[#1C82D9] text-[22px] tracking-tight">
             Sell
           </h1>
         </header>
@@ -86,7 +72,7 @@ export default function SellPage() {
                 <Image
                   src={selectedCurrency === "USDT-BEP20" ? "/images/tyellow.png" : "/images/tlogo.png"}
                   alt="USDT Logo"
-                  width={40}  
+                  width={40}
                   height={40}
                   className="w-10 h-10 object-contain shrink-0"
                 />
@@ -249,7 +235,6 @@ export default function SellPage() {
                   onClick={() => {
                     setSelectedCurrency("USDT");
                     setShowTransferOutModal(false);
-                    triggerToast("Selected USDT");
                   }}
                   className="w-full bg-[#96DCFF] hover:bg-[#85D4FF] border border-[#7BCEFF] rounded-[20px] p-3.5 flex items-center justify-between shadow-[0_2px_8px_rgba(150,220,255,0.4)] transition-all cursor-pointer"
                 >
@@ -279,7 +264,6 @@ export default function SellPage() {
                   onClick={() => {
                     setSelectedCurrency("USDT-BEP20");
                     setShowTransferOutModal(false);
-                    triggerToast("Selected USDT-BEP20");
                   }}
                   className="w-full bg-[#96DCFF] hover:bg-[#85D4FF] border border-[#7BCEFF] rounded-[20px] p-3.5 flex items-center justify-between shadow-[0_2px_8px_rgba(150,220,255,0.4)] transition-all cursor-pointer"
                 >

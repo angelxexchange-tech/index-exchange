@@ -23,7 +23,7 @@ export default function WithdrawalReportPage() {
           >
             <ArrowLeft className="w-6 h-6 stroke-[2.5]" />
           </Link>
-          <h1 className="text-[#1C82D9] font-bold text-[22px] tracking-tight">
+          <h1 className="text-[#1C82D9] text-[22px] tracking-tight">
             Withdrawal Report
           </h1>
         </header>

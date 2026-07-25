@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Search, X, Plus, Trash2, CheckCircle2, History, AlertCircle } from "lucide-react";
+import { ArrowLeft, Search, X, Plus, Trash2, History, AlertCircle } from "lucide-react";
 
 interface BankAccount {
   id: string;
@@ -29,20 +29,12 @@ export default function WithdrawPage() {
   const [showSendModal, setShowSendModal] = useState<BankAccount | null>(null);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // New account form state
   const [newHolder, setNewHolder] = useState("");
   const [newBank, setNewBank] = useState("");
   const [newAccNum, setNewAccNum] = useState("");
   const [newIfsc, setNewIfsc] = useState("");
-
-  const triggerToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 3000);
-  };
 
   const handleAddAccount = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,13 +55,11 @@ export default function WithdrawPage() {
     setNewAccNum("");
     setNewIfsc("");
     setShowAddModal(false);
-    triggerToast("Bank account added successfully!");
   };
 
   const handleDeleteAccount = (id: string) => {
     if (confirm("Are you sure you want to delete this bank account?")) {
       setAccounts(accounts.filter((acc) => acc.id !== id));
-      triggerToast("Bank account deleted.");
     }
   };
 
@@ -79,7 +69,6 @@ export default function WithdrawPage() {
       alert("Please enter a valid withdrawal amount.");
       return;
     }
-    triggerToast(`Withdrawal request of ₹${withdrawAmount} submitted successfully!`);
     setShowSendModal(null);
     setWithdrawAmount("");
   };
@@ -94,13 +83,6 @@ export default function WithdrawPage() {
 
   return (
     <div className="relative flex flex-col w-full h-full min-h-screen bg-[#F0F2F5] overflow-x-hidden font-sans pb-12 select-none">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900/90 text-white px-4 py-2.5 rounded-full shadow-lg text-sm font-medium flex items-center space-x-2 transition-all duration-200 animate-in fade-in slide-in-from-top-4">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
 
       {/* Main Content Area */}
       <main className="flex-1 px-4 pt-4 pb-6 space-y-4 max-w-[430px] mx-auto w-full">
@@ -113,7 +95,7 @@ export default function WithdrawPage() {
           >
             <ArrowLeft className="w-6 h-6 stroke-[2.5]" />
           </Link>
-          <h1 className="text-[#1C82D9] font-bold text-[22px] tracking-tight">
+          <h1 className="text-[#1C82D9] text-[22px] tracking-tight">
             Bank Transfer
           </h1>
         </header>
@@ -126,7 +108,7 @@ export default function WithdrawPage() {
 
           {/* INR Box */}
           <div className="bg-[#B5BAC9] rounded-[14px] py-2.5 px-4 flex flex-col items-center justify-center text-center">
-            <span className="text-white font-bold text-[12px] tracking-wider uppercase">
+            <span className="text-white text-[12px] tracking-wider uppercase">
               INR
             </span>
             <span className="text-[#1C82D9] font-extrabold text-[18px] tracking-tight mt-0.5">

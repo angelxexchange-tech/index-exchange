@@ -7,33 +7,19 @@ import { ArrowLeft, Copy, CheckCircle2 } from "lucide-react";
 
 export default function DepositPage() {
   const [copied, setCopied] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const depositAddress = "TCD5c5uBFQ3KaaJR48BwWBYsLKCcozco8h";
-
-  const triggerToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
-  };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(depositAddress);
     setCopied(true);
-    triggerToast("Deposit address copied to clipboard!");
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
     <div className="relative flex flex-col w-full h-full min-h-screen bg-[#F0F2F5] overflow-x-hidden font-sans pb-12 select-none">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900/90 text-white px-4 py-2.5 rounded-full shadow-lg text-sm font-medium flex items-center space-x-2 transition-all duration-200 animate-in fade-in slide-in-from-top-4">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
 
       {/* Main Container */}
-      <main className="flex-1 px-4 pt-4 pb-8 max-w-[430px] mx-auto w-full space-y-4">
+      <main className="flex-1 px-4 pt-2 pb-8 max-w-[430px] mx-auto w-full space-y-4">
         {/* Top Header */}
         <header className="flex items-center space-x-3 py-1 mb-1">
           <Link
@@ -43,7 +29,7 @@ export default function DepositPage() {
           >
             <ArrowLeft className="w-6 h-6 stroke-[2.5]" />
           </Link>
-          <h1 className="text-[#1C82D9] font-bold text-[22px] tracking-tight">
+          <h1 className="text-[#1C82D9] text-[22px] tracking-tight">
             Deposit USDT
           </h1>
         </header>

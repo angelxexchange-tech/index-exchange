@@ -77,7 +77,7 @@ export default function SellHistoryPage() {
           >
             <ArrowLeft className="w-6 h-6 stroke-[2.5]" />
           </Link>
-          <h1 className="text-[#1C82D9] font-bold text-[22px] tracking-tight">
+          <h1 className="text-[#1C82D9] text-[22px] tracking-tight">
             Sell History
           </h1>
         </header>
@@ -200,7 +200,7 @@ export default function SellHistoryPage() {
                 </div>
 
                 {/* Bottom Green Status Banner */}
-                <div className="w-full bg-[#2E6B34] py-2.5 text-center text-white font-black text-[15px] tracking-wider uppercase">
+                <div className="w-full bg-[#2E6B34] py-2.5 text-center text-white text-[15px] tracking-wider uppercase">
                   {tx.status}
                 </div>
               </div>

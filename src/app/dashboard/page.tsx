@@ -68,19 +68,19 @@ export default function DashboardPage() {
             </div>
 
             {/* Name */}
-            <h2 className="text-black font-extrabold text-[15px] leading-tight tracking-tight font-sans">
+            <h2 className="text-black font-bold text-[15px] leading-tight tracking-tight font-sans">
               Manish Jangra
             </h2>
 
             {/* User Id */}
             <div className="text-[11px] font-medium mt-0.5">
-              <span className="text-[#A0A8B6]">User Id : </span>
+              <span className="text-[#000000]">User Id : </span>
               <span className="text-[#F5B301] font-bold">RT13525</span>
             </div>
 
             {/* Email */}
-            <p className="text-[#A0A8B6] text-[10px] font-normal truncate max-w-[130px] mt-0.5">
-              Manish Jangra@gmail.c...
+            <p className="text-[#A0A8B6] text-[12px] font-normal truncate max-w-[250px]">
+              Manish Jangra@gmail.com
             </p>
           </div>
         </div>
@@ -101,7 +101,7 @@ export default function DashboardPage() {
                 <span className="text-[#38B6FF] font-bold text-[13px] tracking-wide">
                   INR
                 </span>
-                <span className="text-[#F5B301] font-extrabold text-[22px] tracking-tight mt-0.5">
+                <span className="text-[#F5B301] font-semibold text-[22px] tracking-tight mt-0.5">
                   ₹ 45828.25
                 </span>
               </div>
@@ -118,7 +118,7 @@ export default function DashboardPage() {
 
         {/* Portfolio Section */}
         <section className="w-full space-y-3.5">
-          <h2 className="text-black font-bold text-[20px] mb-2 tracking-tight font-sans">
+          <h2 className="text-black font-semibold text-[20px] mb-2 tracking-tight font-sans">
             Portfolio
           </h2>
 
@@ -134,7 +134,7 @@ export default function DashboardPage() {
                 className="w-12 h-12 object-contain shrink-0"
               />
               <div className="flex flex-col">
-                <span className="text-black font-bold text-[16px] tracking-tight">
+                <span className="text-black font-semibold text-[16px] tracking-tight">
                   USDT
                 </span>
                 <span className="text-[#F5B301] font-bold text-sm mt-0.5">
@@ -146,14 +146,14 @@ export default function DashboardPage() {
             <div className="flex items-center">
               <Link
                 href="/transfer"
-                className="flex-1 bg-[#38B6FF] hover:opacity-95 active:opacity-90 text-white font-semibold text-[12px] py-2.5 flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
+                className="flex-1 bg-[#38B6FF] hover:opacity-95 active:opacity-90 text-white font-bold text-[13px] py-2.5 flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
               >
                 <ArrowUp className="w-3.5 h-3.5 stroke-[2.5]" />
                 <span>Transfer</span>
               </Link>
               <Link
                 href="/deposit"
-                className="flex-1 bg-[#F5B301] hover:opacity-95 active:opacity-90 text-white font-semibold text-[12px] py-2.5 flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
+                className="flex-1 bg-[#F5B301] hover:opacity-95 active:opacity-90 text-white font-bold text-[13px] py-2.5 flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
               >
                 <ArrowDown className="w-3.5 h-3.5 stroke-[2.5]" />
                 <span>Deposit</span>
@@ -173,7 +173,7 @@ export default function DashboardPage() {
                 className="w-12 h-12 object-contain shrink-0"
               />
               <div className="flex flex-col">
-                <span className="text-black font-bold text-[16px] tracking-tight">
+                <span className="text-black font-semibold text-[16px] tracking-tight">
                   USDT-BEP20
                 </span>
                 <span className="text-[#F5B301] font-bold text-sm mt-0.5">
@@ -183,8 +183,7 @@ export default function DashboardPage() {
             </div>
             <Link
               href="/transfer"
-              className="w-full bg-[#38B6FF] hover:opacity-95 active:opacity-90 text-white font-semibold text-[12px] py-2.5 flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
-            >
+              className="w-full bg-[#38B6FF] hover:opacity-95 active:opacity-90 text-white font-bold text-[13px] py-2.5 flex items-center justify-center space-x-1.5 transition-all cursor-pointer">
               <ArrowUp className="w-3.5 h-3.5 stroke-[2.5]" />
               <span>Transfer</span>
             </Link>
@@ -198,12 +197,15 @@ export default function DashboardPage() {
           </h2>
 
           {/* Level Income */}
-          <div className="bg-white border border-[#38B6FF]/35 rounded-2xl p-4 flex items-center justify-between shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
+          <Link
+            href="/level-income-report"
+            className="bg-white border border-[#38B6FF]/35 rounded-2xl p-4 flex items-center justify-between shadow-[0_2px_8px_rgba(0,0,0,0.03)] hover:border-[#38B6FF] active:scale-[0.99] transition-all cursor-pointer block"
+          >
             <div className="flex flex-col">
-              <span className="text-[#38B6FF] font-semibold text-[13.5px]">
+              <span className="text-[#38B6FF] font-medium text-[13.5px]">
                 Level Income
               </span>
-              <span className="text-black font-bold text-[20px] mt-0.5">
+              <span className="text-black font-medium text-[20px] mt-0.5">
                 ₹ 0
               </span>
             </div>
@@ -212,15 +214,18 @@ export default function DashboardPage() {
                 <path d="M21 7.28V5c0-1.1-.9-2-2-2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-2.28c.59-.35 1-.99 1-1.72V9c0-.73-.41-1.37-1-1.72zM20 9v6h-3c-1.1 0-2-.9-2-2s.9-2 2-2h3zM5 5h14v2H5V5z"/>
               </svg>
             </div>
-          </div>
+          </Link>
 
           {/* LTD Income */}
-          <div className="bg-white border border-[#38B6FF]/35 rounded-2xl p-4 flex items-center justify-between shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
+          <Link
+            href="/ltd-income-report"
+            className="bg-white border border-[#38B6FF]/35 rounded-2xl p-4 flex items-center justify-between shadow-[0_2px_8px_rgba(0,0,0,0.03)] hover:border-[#38B6FF] active:scale-[0.99] transition-all cursor-pointer block"
+          >
             <div className="flex flex-col">
-              <span className="text-[#38B6FF] font-semibold text-[13.5px]">
+              <span className="text-[#38B6FF] font-medium text-[13.5px]">
                 LTD Income
               </span>
-              <span className="text-black font-bold text-[20px] mt-0.5">
+              <span className="text-black font-medium text-[20px] mt-0.5">
                 ₹ 0
               </span>
             </div>
@@ -229,15 +234,18 @@ export default function DashboardPage() {
                 <path d="M21 7.28V5c0-1.1-.9-2-2-2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-2.28c.59-.35 1-.99 1-1.72V9c0-.73-.41-1.37-1-1.72zM20 9v6h-3c-1.1 0-2-.9-2-2s.9-2 2-2h3zM5 5h14v2H5V5z"/>
               </svg>
             </div>
-          </div>
+          </Link>
 
           {/* Total Income */}
-          <div className="bg-white border border-[#38B6FF]/35 rounded-2xl p-4 flex items-center justify-between shadow-[0_2px_8px_rgba(0,0,0,0.03)]">
+          <Link
+            href="/total-income-report"
+            className="bg-white border border-[#38B6FF]/35 rounded-2xl p-4 flex items-center justify-between shadow-[0_2px_8px_rgba(0,0,0,0.03)] hover:border-[#38B6FF] active:scale-[0.99] transition-all cursor-pointer block"
+          >
             <div className="flex flex-col">
-              <span className="text-[#38B6FF] font-semibold text-[13.5px]">
+              <span className="text-[#38B6FF] font-medium  text-[13.5px]">
                 Total Income
               </span>
-              <span className="text-black font-bold text-[20px] mt-0.5">
+              <span className="text-black font-medium text-[20px] mt-0.5">
                 ₹ 0
               </span>
             </div>
@@ -246,11 +254,14 @@ export default function DashboardPage() {
                 <path d="M21 7.28V5c0-1.1-.9-2-2-2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-2.28c.59-.35 1-.99 1-1.72V9c0-.73-.41-1.37-1-1.72zM20 9v6h-3c-1.1 0-2-.9-2-2s.9-2 2-2h3zM5 5h14v2H5V5z"/>
               </svg>
             </div>
-          </div>
+          </Link>
         </section>
 
+      
+      </main>
+
         {/* Refer & Introduce Section */}
-        <section className="w-full pt-4 flex flex-col items-center text-center">
+        <section className="w-full pt-4 flex flex-col items-center text-center bg-white">
           {/* 3D Gift Box Graphic */}
           <div className="w-24 h-24 relative mb-2 flex items-center justify-center">
             <svg
@@ -272,12 +283,12 @@ export default function DashboardPage() {
             </svg>
           </div>
 
-          <h3 className="text-black font-extrabold text-[15px] max-w-[290px] leading-snug mb-4">
+          <h3 className="text-black font-bold text-[15px] max-w-[290px] leading-snug mb-4">
             Refer and introduce the ind-X_Seller to your contacts!
           </h3>
 
           {/* Referral URL Box */}
-          <div className="bg-[#E4E9F2] rounded-2xl p-3.5 px-4 flex items-center justify-between w-full max-w-[340px] border border-slate-200/80 mb-4 shadow-inner">
+          <div className="bg-[#E4E9F2] rounded-2xl p-3.5 px-4 flex items-center justify-between w-full max-w-[380px] border border-slate-200/80 mb-4 shadow-inner">
             <span className="text-[11px] text-[#2C3E50] font-medium truncate pr-2 select-all">
               {referUrl}
             </span>
@@ -304,7 +315,6 @@ export default function DashboardPage() {
             Refer
           </button>
         </section>
-      </main>
     </div>
   );
 }
