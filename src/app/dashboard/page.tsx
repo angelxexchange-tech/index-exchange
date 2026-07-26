@@ -79,8 +79,8 @@ export default function DashboardPage() {
             </div>
 
             {/* Email */}
-            <p className="text-[#A0A8B6] text-[12px] font-normal truncate max-w-[250px]">
-              Manish Jangra@gmail.com
+            <p className="text-[#A0A8B6] text-[12px] font-normal truncate max-w-[180px]">
+              Manish Jangra@gmail..
             </p>
           </div>
         </div>
