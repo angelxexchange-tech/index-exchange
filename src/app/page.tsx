@@ -1,12 +1,51 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
 export default function WelcomePage() {
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    // Automatically transition from splash screen after 2.2 seconds
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 2200);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (showSplash) {
+    return (
+      <div
+        onClick={() => setShowSplash(false)}
+        className="relative flex flex-col justify-between items-center w-full h-full min-h-screen bg-gradient-to-b from-[#2CA5F7] via-[#1D88E9] to-[#1272D3] cursor-pointer select-none overflow-hidden animate-in fade-in duration-300"
+      >
+        {/* Top Spacer */}
+        <div className="flex-1" />
+
+        {/* Centered ind-X Logo */}
+        <div className="flex flex-col items-center justify-center my-auto px-6">
+          <Image
+            src="/images/withI.png"
+            alt="ind-X Logo"
+            width={320}
+            height={115}
+            priority
+            className="w-[280px] sm:w-[320px] h-auto object-contain drop-shadow-lg"
+          />
+        </div>
+
+        {/* Bottom Spacer */}
+        <div className="flex-1" />
+ 
+      </div>
+    );
+  }
+
   return (
-    <div className="relative flex flex-col justify-between items-center w-full h-full bg-gradient-to-b from-[#2DA2F7] via-[#1B83E7] to-[#0C5FB9] px-6 py-12 text-white overflow-hidden">
+    <div className="relative flex flex-col justify-between items-center w-full h-full bg-gradient-to-b from-[#2DA2F7] via-[#1B83E7] to-[#0C5FB9] px-6 py-12 text-white overflow-hidden animate-in fade-in duration-500">
       {/* Background Glow Accent */}
       <div className="absolute -top-32 -left-32 w-80 h-80 bg-white/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-[#F5B301]/20 rounded-full blur-3xl pointer-events-none" />
@@ -50,3 +89,4 @@ export default function WelcomePage() {
     </div>
   );
 }
+
