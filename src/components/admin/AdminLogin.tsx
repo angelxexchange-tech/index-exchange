@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import Image from "next/image";
-import { ShieldCheck, Lock, User, Eye, EyeOff, Loader2, Sparkles, KeyRound, ArrowRight } from "lucide-react";
+import { ShieldCheck, Lock, User, Eye, EyeOff, Loader2, Sparkles, ArrowRight } from "lucide-react";
 
 interface AdminLoginProps {
   onLoginSuccess: (adminData: any) => void;
@@ -61,12 +60,6 @@ export default function AdminLogin({ onLoginSuccess }: AdminLoginProps) {
     }
   };
 
-  const autofillDemoCredentials = () => {
-    setAdminId("admin");
-    setPassword("admin123");
-    setErrorMsg(null);
-  };
-
   return (
     <div className="relative min-h-screen w-full bg-slate-950 flex flex-col justify-center items-center px-4 py-8 overflow-hidden font-sans select-none">
       {/* Background Ambient Glows */}
@@ -103,28 +96,6 @@ export default function AdminLogin({ onLoginSuccess }: AdminLoginProps) {
           <p className="text-xs text-slate-400 mt-1">
             Access platform governance, analytics & operations
           </p>
-        </div>
-
-        {/* Quick Demo Autofill Banner */}
-        <div className="w-full bg-slate-950/60 border border-[#31A9F6]/30 rounded-2xl p-3.5 mb-6 flex items-center justify-between">
-          <div className="flex items-center space-x-2.5">
-            <KeyRound className="w-4 h-4 text-[#F5B301]" />
-            <div className="text-left">
-              <div className="text-xs font-semibold text-slate-200">Default Demo Credentials</div>
-              <div className="text-[11px] text-slate-400 font-mono">
-                ID: <span className="text-[#31A9F6]">admin</span> | Pass: <span className="text-[#31A9F6]">admin123</span>
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={autofillDemoCredentials}
-            className="text-[11px] font-bold text-[#31A9F6] bg-[#31A9F6]/10 hover:bg-[#31A9F6]/20 border border-[#31A9F6]/40 px-3 py-1.5 rounded-xl transition-all active:scale-95 cursor-pointer flex items-center space-x-1"
-          >
-            <span>Auto Fill</span>
-            <ArrowRight className="w-3 h-3" />
-          </button>
         </div>
 
         {/* Login Form */}
