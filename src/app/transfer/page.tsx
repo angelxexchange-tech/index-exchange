@@ -1,15 +1,42 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, QrCode } from "lucide-react";
 import QrScannerModal from "@/components/QrScannerModal";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 export default function TransferPage() {
+  const { isAuthenticated, userId, clearAuthAndRedirect } = useAuthGuard();
   const [walletAddress, setWalletAddress] = useState("");
   const [amount, setAmount] = useState("");
   const [authMethod, setAuthMethod] = useState<"OTP" | "Google TOTP">("OTP");
   const [showScanner, setShowScanner] = useState(false);
+  const [trxBalance, setTrxBalance] = useState(0);
+  const [usdtBalance, setUsdtBalance] = useState(0);
+
+  useEffect(() => {
+    if (!isAuthenticated || !userId) return;
+
+    fetch(`/api/user/me?userId=${encodeURIComponent(userId)}`)
+      .then((res) => {
+        if (res.status === 401) {
+          clearAuthAndRedirect();
+          return null;
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (!data) return;
+        if (data.success && data.wallet) {
+          setTrxBalance(data.wallet.trxBalance ?? 0);
+          setUsdtBalance(data.wallet.usdtBalance ?? 0);
+        } else {
+          clearAuthAndRedirect();
+        }
+      })
+      .catch(() => clearAuthAndRedirect());
+  }, [isAuthenticated, userId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,6 +49,10 @@ export default function TransferPage() {
       return;
     }
   };
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="relative flex flex-col w-full h-full min-h-screen bg-[#F0F2F5] overflow-x-hidden font-sans pb-12 select-none">
@@ -63,7 +94,7 @@ export default function TransferPage() {
             <div className="flex-1 bg-[#B2B8C6] rounded-[14px] py-3 px-2 flex flex-col items-center justify-center text-center text-white min-h-[78px]">
               <span className="font-bold text-[13px] tracking-wider">TRX</span>
               <span className="font-abold text-[16px] tracking-tight mt-0.5 text-[#1C82D9]">
-                0
+                {trxBalance}
               </span>
               <span className="text-[11px] font-semibold opacity-90 mt-0.5 text-[#1C82D9]">
                 $0
@@ -74,7 +105,7 @@ export default function TransferPage() {
             <div className="flex-1 bg-[#B2B8C6] rounded-[14px] py-3 px-2 flex flex-col items-center justify-center text-center text-white min-h-[78px]">
               <span className="font-bold text-[13px] tracking-wider">USDT</span>
               <span className=" text-[16px] tracking-tight mt-0.5 text-[#1C82D9]">
-                0
+                {usdtBalance}
               </span>
             </div>
           </div>
@@ -137,20 +168,22 @@ export default function TransferPage() {
             <button
               type="button"
               onClick={() => setAuthMethod("OTP")}
-              className={`flex-1 py-3 px-3 rounded-[14px] font-bold text-[14px] tracking-wide transition-all cursor-pointer text-center ${authMethod === "OTP"
+              className={`flex-1 py-3 px-3 rounded-[14px] font-bold text-[14px] tracking-wide transition-all cursor-pointer text-center ${
+                authMethod === "OTP"
                   ? "bg-[#1C82D9] text-white shadow-xs"
                   : "bg-[#B2B8C6] text-white hover:bg-[#A3A9B7]"
-                }`}
+              }`}
             >
               OTP
             </button>
             <button
               type="button"
               onClick={() => setAuthMethod("Google TOTP")}
-              className={`flex-1 py-3 px-3 rounded-[14px] font-bold text-[14px] tracking-wide transition-all cursor-pointer text-center ${authMethod === "Google TOTP"
+              className={`flex-1 py-3 px-3 rounded-[14px] font-bold text-[14px] tracking-wide transition-all cursor-pointer text-center ${
+                authMethod === "Google TOTP"
                   ? "bg-[#1C82D9] text-white shadow-xs"
                   : "bg-[#B2B8C6] text-white hover:bg-[#A3A9B7]"
-                }`}
+              }`}
             >
               Google TOTP
             </button>

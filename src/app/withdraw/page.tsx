@@ -1,89 +1,171 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Search, X, Plus, Trash2, History, AlertCircle } from "lucide-react";
+import { ArrowLeft, Search, X, Trash2, History, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 interface BankAccount {
-  id: string;
-  accountHolder: string;
+  _id: string;
   bankName: string;
   accountNumber: string;
+  accountHolderName: string;
   ifscCode: string;
 }
 
 export default function WithdrawPage() {
+  const { isAuthenticated, userId, isMounted, clearAuthAndRedirect } = useAuthGuard();
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [accounts, setAccounts] = useState<BankAccount[]>([
-    {
-      id: "1",
-      accountHolder: "Jagdish",
-      bankName: "INDIAN BANK",
-      accountNumber: "8340794042",
-      ifscCode: "IDIB000C128",
-    },
-  ]);
+  const [accounts, setAccounts] = useState<BankAccount[]>([]);
+  const [inrBalance, setInrBalance] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
+
+  // Admin Withdrawal Limits state strictly bound to API
+  const [limits, setLimits] = useState<{ minAmount: number; maxAmount: number } | null>(null);
 
   // Modals state
-  const [showAddModal, setShowAddModal] = useState(false);
   const [showSendModal, setShowSendModal] = useState<BankAccount | null>(null);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [statusAlert, setStatusAlert] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  // New account form state
-  const [newHolder, setNewHolder] = useState("");
-  const [newBank, setNewBank] = useState("");
-  const [newAccNum, setNewAccNum] = useState("");
-  const [newIfsc, setNewIfsc] = useState("");
+  const loadData = () => {
+    if (!isAuthenticated || !userId) return;
 
-  const handleAddAccount = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newHolder || !newBank || !newAccNum || !newIfsc) {
-      alert("Please fill all fields!");
-      return;
-    }
-    const newAcc: BankAccount = {
-      id: Date.now().toString(),
-      accountHolder: newHolder,
-      bankName: newBank.toUpperCase(),
-      accountNumber: newAccNum,
-      ifscCode: newIfsc.toUpperCase(),
-    };
-    setAccounts([newAcc, ...accounts]);
-    setNewHolder("");
-    setNewBank("");
-    setNewAccNum("");
-    setNewIfsc("");
-    setShowAddModal(false);
+    // 1. Fetch user profile & wallet
+    fetch(`/api/user/me?userId=${encodeURIComponent(userId)}`)
+      .then((res) => {
+        if (res.status === 401) {
+          clearAuthAndRedirect();
+          return null;
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (data && data.success && data.wallet) {
+          setInrBalance(data.wallet.inrBalance || 0);
+        }
+      })
+      .catch((err) => console.error("Fetch profile error:", err));
+
+    // 2. Fetch user saved bank accounts
+    fetch(`/api/user/bank-accounts?userId=${encodeURIComponent(userId)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.accounts)) {
+          setAccounts(data.accounts);
+        }
+      })
+      .catch((err) => console.error("Fetch bank accounts error:", err))
+      .finally(() => setLoading(false));
+
+    // 3. Fetch live withdrawal limits set by Admin
+    fetch("/api/withdrawal-settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.settings) {
+          setLimits(data.settings);
+        }
+      })
+      .catch((err) => console.error("Fetch limits error:", err));
   };
 
-  const handleDeleteAccount = (id: string) => {
-    if (confirm("Are you sure you want to delete this bank account?")) {
-      setAccounts(accounts.filter((acc) => acc.id !== id));
+  useEffect(() => {
+    loadData();
+  }, [isAuthenticated, userId]);
+
+  const handleDeleteAccount = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this bank account?")) return;
+
+    try {
+      const res = await fetch(`/api/user/bank-accounts?id=${id}&userId=${encodeURIComponent(userId!)}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAccounts(accounts.filter((acc) => acc._id !== id));
+      } else {
+        alert(data.message || "Failed to delete bank account.");
+      }
+    } catch (err) {
+      alert("Network error deleting bank account.");
     }
   };
 
-  const handleSendWithdrawal = (e: React.FormEvent) => {
+  const handleSendWithdrawal = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!withdrawAmount || Number(withdrawAmount) <= 0) {
-      alert("Please enter a valid withdrawal amount.");
+    setStatusAlert(null);
+
+    const numAmount = Number(withdrawAmount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      setStatusAlert({ type: "error", message: "Please enter a valid withdrawal amount." });
       return;
     }
-    setShowSendModal(null);
-    setWithdrawAmount("");
+
+    if (limits) {
+      if (numAmount < limits.minAmount) {
+        setStatusAlert({ type: "error", message: `Minimum withdrawal amount is ₹${limits.minAmount}.` });
+        return;
+      }
+      if (numAmount > limits.maxAmount) {
+        setStatusAlert({ type: "error", message: `Maximum withdrawal amount is ₹${limits.maxAmount}.` });
+        return;
+      }
+    }
+
+    if (numAmount > inrBalance) {
+      setStatusAlert({ type: "error", message: `Insufficient INR balance. Available: ₹${inrBalance.toFixed(2)}` });
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const res = await fetch("/api/user/withdraw", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          bankAccountId: showSendModal?._id,
+          amount: numAmount,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setStatusAlert({ type: "error", message: data.message || "Withdrawal request failed." });
+      } else {
+        setStatusAlert({ type: "success", message: data.message });
+        setWithdrawAmount("");
+        setTimeout(() => {
+          setShowSendModal(null);
+          setStatusAlert(null);
+          loadData();
+        }, 1500);
+      }
+    } catch (err) {
+      setStatusAlert({ type: "error", message: "Network error during withdrawal submission." });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const filteredAccounts = accounts.filter(
     (acc) =>
-      acc.accountHolder.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      acc.accountHolderName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       acc.bankName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       acc.accountNumber.includes(searchQuery) ||
       acc.ifscCode.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  return (
-    <div className="relative flex flex-col w-full h-full min-h-screen bg-[#F0F2F5] overflow-x-hidden font-sans pb-12 select-none">
+  if (!isMounted || !isAuthenticated) {
+    return <div className="relative flex flex-col w-full h-full min-h-screen bg-[#F0F2F5]" suppressHydrationWarning />;
+  }
 
+  return (
+    <div className="relative flex flex-col w-full h-full min-h-screen bg-[#F0F2F5] overflow-x-hidden font-sans pb-12 select-none" suppressHydrationWarning>
       {/* Main Content Area */}
       <main className="flex-1 px-4 pt-4 pb-6 space-y-4 max-w-[430px] mx-auto w-full">
         {/* Top Header Bar */}
@@ -95,7 +177,7 @@ export default function WithdrawPage() {
           >
             <ArrowLeft className="w-6 h-6 stroke-[2.5]" />
           </Link>
-          <h1 className="text-[#1C82D9] text-[22px] tracking-tight">
+          <h1 className="text-[#1C82D9] text-[22px] tracking-tight font-bold">
             Bank Transfer
           </h1>
         </header>
@@ -112,9 +194,16 @@ export default function WithdrawPage() {
               INR
             </span>
             <span className="text-[#1C82D9] font-extrabold text-[18px] tracking-tight mt-0.5">
-              ₹ 45828.25
+              ₹ {inrBalance.toFixed(2)}
             </span>
           </div>
+
+          {/* Limits helper tag */}
+          {limits && (
+            <div className="text-[11px] font-semibold text-slate-600 text-center bg-slate-50 border border-slate-200/80 rounded-lg py-1 px-2">
+              Min Withdrawal: <span className="text-[#1C82D9] font-bold">₹{limits.minAmount}</span> | Max: <span className="text-[#1C82D9] font-bold">₹{limits.maxAmount}</span>
+            </div>
+          )}
 
           {/* Buttons Row */}
           <div className="flex items-center space-x-3 pt-0.5">
@@ -125,7 +214,7 @@ export default function WithdrawPage() {
               Add Bank
             </Link>
             <Link
-              href="/transfer-report"
+              href="/withdrawal-history"
               className="flex-1 bg-[#1C82D9] hover:bg-[#1875CD] active:scale-[0.98] text-white font-bold text-[13px] py-2.5 px-2 rounded-[12px] text-center shadow-xs transition-all cursor-pointer whitespace-nowrap"
             >
               Transaction History
@@ -147,7 +236,7 @@ export default function WithdrawPage() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search"
+            placeholder="Search Bank, Account Name..."
             className="w-full bg-transparent text-slate-800 font-medium text-[15px] placeholder:text-slate-400 outline-none"
           />
           {searchQuery && (
@@ -159,190 +248,114 @@ export default function WithdrawPage() {
               <X className="w-3.5 h-3.5 stroke-[3]" />
             </button>
           )}
-          {!searchQuery && (
-            <div className="w-5 h-5 rounded-full bg-[#1C82D9] text-white flex items-center justify-center shrink-0 cursor-pointer ml-1">
-              <X className="w-3.5 h-3.5 stroke-[3]" />
-            </div>
-          )}
         </div>
 
         {/* Bank Accounts List */}
-        <div className="space-y-4 pt-1">
-          {filteredAccounts.length === 0 ? (
-            <div className="bg-white rounded-[20px] p-6 text-center text-slate-500 font-medium text-sm border border-slate-200">
-              No bank accounts found matching search.
-            </div>
-          ) : (
-            filteredAccounts.map((account) => (
-              <div
-                key={account.id}
-                className="w-full bg-white rounded-[20px] shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-slate-100 overflow-hidden flex flex-col"
-              >
-                {/* Account Details Content */}
-                <div className="p-4 space-y-2 text-sm font-medium">
-                  {/* Row 1: Account Holder */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-900 font-bold text-[13px]">
-                      Account Holder :
-                    </span>
-                    <span className="text-[#1C82D9] font-bold text-[13.5px]">
-                      {account.accountHolder}
-                    </span>
-                  </div>
-
-                  {/* Row 2: Bank Name */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-900 font-bold text-[13px]">
-                      Bank Name :
-                    </span>
-                    <span className="text-[#1C82D9] font-bold text-[13.5px] uppercase">
-                      {account.bankName}
-                    </span>
-                  </div>
-
-                  {/* Row 3: Account Number */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-900 font-bold text-[13px]">
-                      Account Number :
-                    </span>
-                    <span className="text-[#1C82D9] font-bold text-[13.5px]">
-                      {account.accountNumber}
-                    </span>
-                  </div>
-
-                  {/* Row 4: IFSC Code */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-900 font-bold text-[13px]">
-                      IFSC Code :
-                    </span>
-                    <span className="text-[#1C82D9] font-bold text-[13.5px] uppercase">
-                      {account.ifscCode}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Bottom Action Buttons */}
-                <div className="flex items-center w-full gap-1 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setShowSendModal(account)}
-                    className="flex-1 bg-[#5A9B61] hover:bg-[#508B56] active:bg-[#467B4C] text-white font-bold text-[15px] py-2.5 text-center cursor-pointer transition-colors rounded-bl-[18px]"
-                  >
-                    Send
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteAccount(account.id)}
-                    className="flex-1 bg-[#E10000] hover:bg-[#C80000] active:bg-[#B00000] text-white font-bold text-[15px] py-2.5 text-center cursor-pointer transition-colors rounded-br-[18px]"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </main>
-
-      {/* MODAL: Add Bank Account */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-xl animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between border-b pb-3 border-slate-200">
-              <h3 className="font-bold text-slate-800 text-lg">Add Bank Account</h3>
-              <button
-                type="button"
-                onClick={() => setShowAddModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form onSubmit={handleAddAccount} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Account Holder Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Jagdish"
-                  value={newHolder}
-                  onChange={(e) => setNewHolder(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:border-[#1C82D9]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Bank Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. INDIAN BANK"
-                  value={newBank}
-                  onChange={(e) => setNewBank(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:border-[#1C82D9]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Account Number
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. 8340794042"
-                  value={newAccNum}
-                  onChange={(e) => setNewAccNum(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:border-[#1C82D9]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  IFSC Code
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. IDIB000C128"
-                  value={newIfsc}
-                  onChange={(e) => setNewIfsc(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:border-[#1C82D9]"
-                />
-              </div>
-              <div className="pt-2 flex items-center space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="flex-1 py-2.5 border border-slate-300 rounded-xl text-slate-700 font-semibold text-sm hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 bg-[#1C82D9] text-white rounded-xl font-bold text-sm hover:bg-[#1875CD]"
-                >
-                  Save Bank
-                </button>
-              </div>
-            </form>
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-12 text-slate-400 space-y-2">
+            <Loader2 className="w-6 h-6 animate-spin text-[#1C82D9]" />
+            <span className="text-xs">Loading bank accounts...</span>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="space-y-4 pt-1">
+            {filteredAccounts.length === 0 ? (
+              <div className="bg-white rounded-[20px] p-6 text-center text-slate-500 font-medium text-sm border border-slate-200 space-y-3">
+                <p>No saved bank accounts found.</p>
+                <Link
+                  href="/add-bank-account"
+                  className="inline-block bg-[#1C82D9] text-white px-4 py-2 rounded-xl text-xs font-bold shadow-xs hover:opacity-95"
+                >
+                  + Add Bank Account
+                </Link>
+              </div>
+            ) : (
+              filteredAccounts.map((account) => (
+                <div
+                  key={account._id}
+                  className="w-full bg-white rounded-[20px] shadow-[0_2px_10px_rgba(0,0,0,0.03)] border border-slate-100 overflow-hidden flex flex-col"
+                >
+                  {/* Account Details Content */}
+                  <div className="p-4 space-y-2 text-sm font-medium">
+                    {/* Row 1: Account Holder */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-900 font-bold text-[13px]">
+                        Account Holder :
+                      </span>
+                      <span className="text-[#1C82D9] font-bold text-[13.5px]">
+                        {account.accountHolderName}
+                      </span>
+                    </div>
+
+                    {/* Row 2: Bank Name */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-900 font-bold text-[13px]">
+                        Bank Name :
+                      </span>
+                      <span className="text-[#1C82D9] font-bold text-[13.5px] uppercase">
+                        {account.bankName}
+                      </span>
+                    </div>
+
+                    {/* Row 3: Account Number */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-900 font-bold text-[13px]">
+                        Account Number :
+                      </span>
+                      <span className="text-[#1C82D9] font-bold text-[13.5px] font-mono">
+                        {account.accountNumber}
+                      </span>
+                    </div>
+
+                    {/* Row 4: IFSC Code */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-900 font-bold text-[13px]">
+                        IFSC Code :
+                      </span>
+                      <span className="text-[#1C82D9] font-bold text-[13.5px] uppercase font-mono">
+                        {account.ifscCode}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Bottom Action Buttons */}
+                  <div className="flex items-center w-full gap-1 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowSendModal(account)}
+                      className="flex-1 bg-[#5A9B61] hover:bg-[#508B56] active:bg-[#467B4C] text-white font-bold text-[15px] py-2.5 text-center cursor-pointer transition-colors rounded-bl-[18px]"
+                    >
+                      Send
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteAccount(account._id)}
+                      className="flex-1 bg-[#E10000] hover:bg-[#C80000] active:bg-[#B00000] text-white font-bold text-[15px] py-2.5 text-center cursor-pointer transition-colors rounded-br-[18px]"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </main>
 
       {/* MODAL: Send / Withdraw to Bank */}
       {showSendModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-xl animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-[1px] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm space-y-4 shadow-2xl animate-in zoom-in-95 border border-slate-100">
             <div className="flex items-center justify-between border-b pb-3 border-slate-200">
               <div>
                 <h3 className="font-bold text-slate-800 text-lg">Withdraw to Bank</h3>
-                <p className="text-xs text-slate-500">{showSendModal.bankName} - {showSendModal.accountNumber}</p>
+                <p className="text-xs text-slate-500 font-semibold">{showSendModal.bankName} - {showSendModal.accountNumber}</p>
               </div>
               <button
                 type="button"
-                onClick={() => setShowSendModal(null)}
+                onClick={() => {
+                  setShowSendModal(null);
+                  setStatusAlert(null);
+                }}
                 className="text-slate-400 hover:text-slate-600 p-1"
               >
                 <X className="w-5 h-5" />
@@ -350,83 +363,70 @@ export default function WithdrawPage() {
             </div>
             <form onSubmit={handleSendWithdrawal} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Enter Amount (₹)
-                </label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-xs font-semibold text-slate-600">
+                    Enter Amount (₹)
+                  </label>
+                  <span className="text-[11px] font-bold text-[#1C82D9]">
+                    Available: ₹ {inrBalance.toFixed(2)}
+                  </span>
+                </div>
                 <input
                   type="number"
                   required
-                  min="1"
-                  max="45828.25"
-                  placeholder="Available: ₹ 45828.25"
+                  step="any"
+                  placeholder={`Min: ₹${limits?.minAmount ?? 0} - Max: ₹${limits?.maxAmount ?? 0}`}
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
-                  className="w-full px-3 py-2.5 border rounded-xl text-base font-bold text-slate-900 focus:outline-none focus:border-[#1C82D9]"
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-base font-bold text-slate-900 focus:outline-none focus:border-[#1C82D9]"
                 />
               </div>
+
+              {limits && (
+                <div className="text-[11.5px] text-slate-500 font-medium leading-tight">
+                  Allowed withdrawal limit: <span className="font-bold text-slate-800">₹{limits.minAmount}</span> to <span className="font-bold text-slate-800">₹{limits.maxAmount}</span>
+                </div>
+              )}
+
+              {statusAlert && (
+                <div
+                  className={`p-3 rounded-xl text-xs font-semibold text-center border animate-in fade-in ${
+                    statusAlert.type === "success"
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                      : "bg-rose-50 border-rose-200 text-rose-700"
+                  }`}
+                >
+                  {statusAlert.message}
+                </div>
+              )}
+
               <div className="pt-2 flex items-center space-x-2">
                 <button
                   type="button"
-                  onClick={() => setShowSendModal(null)}
+                  onClick={() => {
+                    setShowSendModal(null);
+                    setStatusAlert(null);
+                  }}
                   className="flex-1 py-2.5 border border-slate-300 rounded-xl text-slate-700 font-semibold text-sm hover:bg-slate-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-[#5A9B61] text-white rounded-xl font-bold text-sm hover:bg-[#508B56]"
+                  disabled={submitting}
+                  className="flex-1 py-2.5 bg-[#5A9B61] hover:bg-[#508B56] text-white rounded-xl font-bold text-sm flex items-center justify-center space-x-1 shadow-md"
                 >
-                  Confirm Send
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      <span>Sending...</span>
+                    </>
+                  ) : (
+                    <span>Confirm Send</span>
+                  )}
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: Transaction History */}
-      {showHistoryModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-xl animate-in fade-in zoom-in-95 max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between border-b pb-3 border-slate-200 shrink-0">
-              <h3 className="font-bold text-slate-800 text-lg">Transaction History</h3>
-              <button
-                type="button"
-                onClick={() => setShowHistoryModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
-                <div className="flex justify-between font-bold text-slate-800">
-                  <span>Withdrawal - INDIAN BANK</span>
-                  <span className="text-emerald-600">Completed</span>
-                </div>
-                <div className="flex justify-between text-slate-500">
-                  <span>2026-07-22 14:30</span>
-                  <span className="font-bold text-slate-700">₹ 5,000.00</span>
-                </div>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
-                <div className="flex justify-between font-bold text-slate-800">
-                  <span>Withdrawal - INDIAN BANK</span>
-                  <span className="text-emerald-600">Completed</span>
-                </div>
-                <div className="flex justify-between text-slate-500">
-                  <span>2026-07-20 11:15</span>
-                  <span className="font-bold text-slate-700">₹ 10,000.00</span>
-                </div>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowHistoryModal(false)}
-              className="w-full py-2.5 bg-slate-100 text-slate-700 rounded-xl font-semibold text-sm hover:bg-slate-200 shrink-0"
-            >
-              Close
-            </button>
           </div>
         </div>
       )}

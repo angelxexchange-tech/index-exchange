@@ -1,45 +1,169 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, ChevronDown, ChevronRight, ArrowLeftRight, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, X, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 export default function SellPage() {
+  const { isAuthenticated, userId, isMounted, clearAuthAndRedirect } = useAuthGuard();
+
   const [transferAmount, setTransferAmount] = useState("");
   const [expectedAmount, setExpectedAmount] = useState("");
   const [showTransferOutModal, setShowTransferOutModal] = useState(false);
-  const [selectedCurrency, setSelectedCurrency] = useState("USDT");
+  const [selectedCurrency, setSelectedCurrency] = useState<"USDT" | "USDT-BEP20">("USDT");
 
-  const rate = 115; // 1 USDT = 115 INR
+  // Live Wallet & Rates state strictly bound to API
+  const [walletInfo, setWalletInfo] = useState<{
+    inrBalance: number;
+    usdtBalance: number;
+    usdtBep20Balance: number;
+    trxBalance: number;
+    bnbBalance: number;
+  } | null>(null);
+
+  const [rates, setRates] = useState<Record<string, number>>({});
+
+  const [submitting, setSubmitting] = useState(false);
+  const [statusAlert, setStatusAlert] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  // Fetch live user profile & exchange rates strictly from API
+  const loadData = () => {
+    if (!isAuthenticated || !userId) return;
+
+    // 1. User wallet
+    fetch(`/api/user/me?userId=${encodeURIComponent(userId)}`)
+      .then((res) => {
+        if (res.status === 401) {
+          clearAuthAndRedirect();
+          return null;
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (!data) return;
+        if (data.success && data.wallet) {
+          setWalletInfo(data.wallet);
+        }
+      })
+      .catch((err) => console.error("Fetch profile error:", err));
+
+    // 2. Exchange rates strictly from API
+    fetch("/api/rates")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.rates) {
+          setRates(data.rates);
+        }
+      })
+      .catch((err) => console.error("Fetch rates error:", err));
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [isAuthenticated, userId]);
+
+  // Selected asset current rate strictly from API
+  const currentRate = rates[selectedCurrency];
+  
+  const currentAvailableBalance =
+    selectedCurrency === "USDT-BEP20"
+      ? walletInfo?.usdtBep20Balance ?? 0
+      : walletInfo?.usdtBalance ?? 0;
 
   const handleAmountChange = (val: string) => {
     setTransferAmount(val);
-    if (val && !isNaN(Number(val))) {
-      setExpectedAmount((Number(val) * rate).toFixed(2));
+    if (val && !isNaN(Number(val)) && Number(val) > 0 && typeof currentRate === "number" && currentRate > 0) {
+      setExpectedAmount((Number(val) * currentRate).toFixed(2));
     } else {
       setExpectedAmount("");
     }
   };
 
+  // Recalculate expected amount if selected currency or rate changes
+  useEffect(() => {
+    if (transferAmount && !isNaN(Number(transferAmount)) && Number(transferAmount) > 0 && typeof currentRate === "number" && currentRate > 0) {
+      setExpectedAmount((Number(transferAmount) * currentRate).toFixed(2));
+    } else {
+      setExpectedAmount("");
+    }
+  }, [selectedCurrency, currentRate]);
+
   const handlePercentageClick = (pct: number) => {
-    // Assuming available balance for flash sell demo is 100 USDT or 0
-    const totalBalance = 100;
-    const val = (totalBalance * (pct / 100)).toString();
+    if (currentAvailableBalance <= 0) {
+      handleAmountChange("0");
+      return;
+    }
+    const val = ((currentAvailableBalance * pct) / 100).toFixed(4);
     handleAmountChange(val);
   };
 
-  const handleSell = (e: React.FormEvent) => {
+  const handleSell = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!transferAmount || Number(transferAmount) <= 0) {
-      alert("Please enter a valid flash sell amount.");
+    setStatusAlert(null);
+
+    if (typeof currentRate !== "number" || currentRate <= 0) {
+      setStatusAlert({ type: "error", message: `Exchange rate for ${selectedCurrency} is not configured by Admin.` });
       return;
+    }
+
+    const numAmount = Number(transferAmount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      setStatusAlert({ type: "error", message: "Please enter a valid sell amount." });
+      return;
+    }
+
+    if (numAmount > currentAvailableBalance) {
+      setStatusAlert({
+        type: "error",
+        message: `Insufficient ${selectedCurrency} balance. Available: ${currentAvailableBalance} ${selectedCurrency}`,
+      });
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const res = await fetch("/api/user/sell", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          asset: selectedCurrency,
+          amount: numAmount,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setStatusAlert({ type: "error", message: data.message || "Sell transaction failed." });
+      } else {
+        setStatusAlert({
+          type: "success",
+          message: `Successfully sold ${numAmount} ${selectedCurrency} for ₹${data.transaction.expectedINR.toFixed(2)}!`,
+        });
+        setTransferAmount("");
+        setExpectedAmount("");
+        loadData(); // Refresh user wallet balances
+      }
+    } catch (err) {
+      setStatusAlert({ type: "error", message: "Network error during sell transaction." });
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  return (
-    <div className="relative flex flex-col w-full h-full min-h-screen bg-[#F0F2F5] overflow-x-hidden font-sans pb-12 select-none">
+  if (!isMounted || !isAuthenticated) {
+    return <div className="relative flex flex-col w-full h-full min-h-screen bg-[#F0F2F5]" suppressHydrationWarning />;
+  }
 
+  return (
+    <div
+      className="relative flex flex-col w-full h-full min-h-screen bg-[#F0F2F5] overflow-x-hidden font-sans pb-12 select-none"
+      suppressHydrationWarning
+    >
       {/* Main Container */}
       <main className="flex-1 px-4 pt-2 pb-8 max-w-[430px] mx-auto w-full space-y-4">
         {/* Top Header */}
@@ -51,7 +175,7 @@ export default function SellPage() {
           >
             <ArrowLeft className="w-6 h-6 stroke-[2.5]" />
           </Link>
-          <h1 className="text-[#1C82D9] text-[22px] tracking-tight">
+          <h1 className="text-[#1C82D9] text-[22px] tracking-tight font-bold">
             Sell
           </h1>
         </header>
@@ -66,15 +190,16 @@ export default function SellPage() {
               </span>
               <div
                 onClick={() => setShowTransferOutModal(true)}
-                className="flex items-center space-x-1.5 cursor-pointer hover:opacity-80 transition-opacity p-1 -mr-1 rounded-lg"
+                className="flex items-center space-x-1.5 cursor-pointer hover:opacity-80 transition-opacity p-1 -mr-1 rounded-lg bg-slate-50 border border-slate-200/80 px-2 py-1"
               >
                 {/* Tether Logo Badge */}
                 <Image
                   src={selectedCurrency === "USDT-BEP20" ? "/images/tyellow.png" : "/images/tlogo.png"}
                   alt="USDT Logo"
-                  width={40}
-                  height={40}
-                  className="w-10 h-10 object-contain shrink-0"
+                  width={32}
+                  height={32}
+                  priority
+                  className="w-7 h-7 object-contain shrink-0"
                 />
                 <span className="text-[#1C82D9] font-bold text-[14px]">
                   {selectedCurrency}
@@ -87,6 +212,7 @@ export default function SellPage() {
             <div className="bg-[#FFF8E7] rounded-xl p-3 flex items-center justify-between border border-[#FBEECB]">
               <input
                 type="number"
+                step="any"
                 value={transferAmount}
                 onChange={(e) => handleAmountChange(e.target.value)}
                 placeholder="Minimum Flash Amount"
@@ -108,23 +234,29 @@ export default function SellPage() {
               </div>
             </div>
 
-            {/* Balance Text */}
-            <div className="text-[12.5px] font-medium text-slate-500 pl-0.5">
-              Balance : <span className="font-bold text-slate-800">0 USDT</span>
+            {/* Live Asset Balance Text */}
+            <div className="text-[12.5px] font-medium text-slate-500 pl-0.5 flex justify-between items-center">
+              <span>
+                Balance :{" "}
+                <span className="font-bold text-slate-800">
+                  {currentAvailableBalance} {selectedCurrency}
+                </span>
+              </span>
             </div>
           </div>
 
-          {/* Swap Rate Indicator Row */}
-          <div className="flex items-center justify-center space-x-3 py-1">
+          {/* Dynamic Swap Rate Indicator Row strictly from API */}
+          <div className="flex items-center justify-center space-x-3 py-1 bg-white/70 backdrop-blur-sm rounded-2xl border border-slate-200/60 p-2 shadow-xs">
             {/* Left Rate part: 1 USDT */}
             <div className="flex items-center space-x-1.5">
               <span className="font-extrabold text-slate-800 text-[18px]">1</span>
               <Image
                 src={selectedCurrency === "USDT-BEP20" ? "/images/tyellow.png" : "/images/tlogo.png"}
                 alt="USDT Logo"
-                width={40}
-                height={40}
-                className="w-10 h-10 object-contain shrink-0"
+                width={36}
+                height={36}
+                priority
+                className="w-8 h-8 object-contain shrink-0"
               />
             </div>
 
@@ -132,20 +264,23 @@ export default function SellPage() {
             <Image
               src="/images/arrow.png"
               alt="Swap Arrow"
-              width={56}
-              height={56}
+              width={48}
+              height={48}
               priority
-              className="w-14 h-14 object-contain shrink-0 cursor-pointer active:scale-95 transition-all"
+              className="w-11 h-11 object-contain shrink-0 active:scale-95 transition-all"
             />
 
-            {/* Right Rate part: 115 INR */}
+            {/* Right Rate part: Dynamic API Rate */}
             <div className="flex items-center space-x-1.5">
-              <span className="font-extrabold text-slate-800 text-[18px]">115</span>
+              <span className="font-extrabold text-[#1C82D9] text-[20px]">
+                {typeof currentRate === "number" ? currentRate : "--"}
+              </span>
               <Image
                 src="/images/indflag.png"
                 alt="India Flag"
                 width={24}
                 height={16}
+                priority
                 className="h-4 w-auto object-contain shrink-0"
               />
             </div>
@@ -164,6 +299,7 @@ export default function SellPage() {
                   alt="India Flag"
                   width={24}
                   height={16}
+                  priority
                   className="h-4 w-auto object-contain shrink-0"
                 />
                 <span className="text-[#1C82D9] font-bold text-[14px]">
@@ -177,25 +313,54 @@ export default function SellPage() {
               <input
                 type="text"
                 readOnly
-                value={expectedAmount}
+                value={expectedAmount ? `₹ ${expectedAmount}` : ""}
                 placeholder="Expected Amount"
-                className="w-full bg-transparent font-medium text-slate-800 placeholder:text-[#A0A8B6] outline-none text-[13.5px]"
+                className="w-full bg-transparent font-bold text-slate-900 placeholder:text-[#A0A8B6] outline-none text-[15px]"
               />
             </div>
 
-            {/* Balance Text */}
+            {/* INR Balance Text */}
             <div className="text-[12.5px] font-medium text-slate-500 pl-0.5">
-              Balance : <span className="font-bold text-slate-800">45828.25 INR</span>
+              Balance :{" "}
+              <span className="font-bold text-slate-800">
+                ₹ {walletInfo ? walletInfo.inrBalance.toFixed(2) : "0.00"} INR
+              </span>
             </div>
           </div>
+
+          {/* Status Alert Notification */}
+          {statusAlert && (
+            <div
+              className={`p-3.5 rounded-2xl text-xs font-semibold text-center border animate-in fade-in duration-200 flex items-center justify-center space-x-2 ${
+                statusAlert.type === "success"
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                  : "bg-rose-50 border-rose-200 text-rose-700"
+              }`}
+            >
+              {statusAlert.type === "success" ? (
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+              ) : (
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+              )}
+              <span>{statusAlert.message}</span>
+            </div>
+          )}
 
           {/* Submit Sell Button */}
           <div className="pt-2">
             <button
               type="submit"
-              className="w-full py-3.5 rounded-full bg-gradient-to-r from-[#38B6FF] via-[#249CEE] to-[#1C82D9] hover:opacity-95 active:scale-[0.98] text-white font-bold text-[18px] shadow-[0_4px_16px_rgba(28,130,217,0.35)] transition-all cursor-pointer text-center font-sans tracking-wide"
+              disabled={submitting}
+              className="w-full py-3.5 rounded-full bg-gradient-to-r from-[#38B6FF] via-[#249CEE] to-[#1C82D9] hover:opacity-95 active:scale-[0.98] disabled:opacity-75 text-white font-bold text-[18px] shadow-[0_4px_16px_rgba(28,130,217,0.35)] transition-all cursor-pointer flex items-center justify-center space-x-2 tracking-wide"
             >
-              Sell
+              {submitting ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Processing Sell...</span>
+                </>
+              ) : (
+                <span>Sell Now</span>
+              )}
             </button>
           </div>
         </form>
@@ -225,7 +390,7 @@ export default function SellPage() {
             {/* Bottom Sheet Box */}
             <div className="w-full bg-white rounded-t-[32px] px-6 pt-6 pb-8 flex flex-col items-center shadow-[0_-10px_30px_rgba(0,0,0,0.15)] space-y-4">
               <h2 className="text-[24px] font-extrabold text-black tracking-tight text-center font-sans mb-2">
-                Transfer out!
+                Select Asset to Sell
               </h2>
 
               <div className="w-full space-y-3">
@@ -236,7 +401,11 @@ export default function SellPage() {
                     setSelectedCurrency("USDT");
                     setShowTransferOutModal(false);
                   }}
-                  className="w-full bg-[#96DCFF] hover:bg-[#85D4FF] border border-[#7BCEFF] rounded-[20px] p-3.5 flex items-center justify-between shadow-[0_2px_8px_rgba(150,220,255,0.4)] transition-all cursor-pointer"
+                  className={`w-full border rounded-[20px] p-3.5 flex items-center justify-between transition-all cursor-pointer ${
+                    selectedCurrency === "USDT"
+                      ? "bg-[#96DCFF] border-[#38B6FF] shadow-md"
+                      : "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                  }`}
                 >
                   <div className="flex items-center space-x-3.5">
                     <Image
@@ -250,8 +419,8 @@ export default function SellPage() {
                       <span className="font-extrabold text-[#1C82D9] text-[16px] tracking-tight">
                         USDT
                       </span>
-                      <span className="text-slate-700 font-semibold text-[12px]">
-                        USDT
+                      <span className="text-slate-600 font-medium text-[11.5px]">
+                        Rate: {typeof rates.USDT === "number" ? `₹${rates.USDT}` : "Not configured"} / USDT | Bal: {walletInfo?.usdtBalance ?? 0}
                       </span>
                     </div>
                   </div>
@@ -265,7 +434,11 @@ export default function SellPage() {
                     setSelectedCurrency("USDT-BEP20");
                     setShowTransferOutModal(false);
                   }}
-                  className="w-full bg-[#96DCFF] hover:bg-[#85D4FF] border border-[#7BCEFF] rounded-[20px] p-3.5 flex items-center justify-between shadow-[0_2px_8px_rgba(150,220,255,0.4)] transition-all cursor-pointer"
+                  className={`w-full border rounded-[20px] p-3.5 flex items-center justify-between transition-all cursor-pointer ${
+                    selectedCurrency === "USDT-BEP20"
+                      ? "bg-[#96DCFF] border-[#38B6FF] shadow-md"
+                      : "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                  }`}
                 >
                   <div className="flex items-center space-x-3.5">
                     <Image
@@ -279,8 +452,8 @@ export default function SellPage() {
                       <span className="font-extrabold text-[#1C82D9] text-[16px] tracking-tight">
                         USDT-BEP20
                       </span>
-                      <span className="text-slate-700 font-semibold text-[12px]">
-                        USDT-BEP20
+                      <span className="text-slate-600 font-medium text-[11.5px]">
+                        Rate: {typeof rates["USDT-BEP20"] === "number" ? `₹${rates["USDT-BEP20"]}` : "Not configured"} / USDT-BEP20 | Bal: {walletInfo?.usdtBep20Balance ?? 0}
                       </span>
                     </div>
                   </div>

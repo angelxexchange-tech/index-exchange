@@ -1,19 +1,71 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { User, Copy, Check, ArrowUp, ArrowDown } from "lucide-react";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 export default function DashboardPage() {
+  const { isAuthenticated, userId, isMounted, clearAuthAndRedirect } = useAuthGuard();
   const [copied, setCopied] = useState(false);
   const referUrl = "https://ind-x.pro/SignUp?m=tor9Nomc8JTSMA4o6/bNow==";
+
+  // Live user & wallet state
+  const [userInfo, setUserInfo] = useState<{
+    name: string;
+    userId: string;
+    email: string;
+  } | null>(null);
+
+  const [walletInfo, setWalletInfo] = useState<{
+    inrBalance: number;
+    trxBalance: number;
+    usdtBalance: number;
+    bnbBalance: number;
+    usdtBep20Balance: number;
+    levelIncome: number;
+    ltdIncome: number;
+    totalIncome: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated || !userId) return;
+
+    fetch(`/api/user/me?userId=${encodeURIComponent(userId)}`)
+      .then((res) => {
+        if (res.status === 401) {
+          clearAuthAndRedirect();
+          return null;
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (!data) return;
+        if (data.success) {
+          setUserInfo(data.user);
+          setWalletInfo(data.wallet);
+        } else {
+          clearAuthAndRedirect();
+        }
+      })
+      .catch((err) => {
+        console.error("Error fetching user profile:", err);
+      });
+  }, [isAuthenticated, userId]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(referUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  if (!isMounted || !isAuthenticated) {
+    return (
+      <div className="relative flex flex-col w-full h-full min-h-screen bg-[#F0F2F5]" suppressHydrationWarning />
+    );
+  }
+
 
   return (
     <div className="relative flex flex-col w-full h-full min-h-screen bg-[#F0F2F5] overflow-x-hidden font-sans pb-12 select-none">
@@ -69,18 +121,20 @@ export default function DashboardPage() {
 
             {/* Name */}
             <h2 className="text-black font-bold text-[15px] leading-tight tracking-tight font-sans">
-              Manish Jangra
+              {userInfo?.name}
             </h2>
 
             {/* User Id */}
             <div className="text-[11px] font-medium mt-0.5">
               <span className="text-[#000000]">User Id : </span>
-              <span className="text-[#F5B301] font-bold">RT13525</span>
+              <span className="text-[#F5B301] font-bold">
+                {userInfo?.userId}
+              </span>
             </div>
 
             {/* Email */}
             <p className="text-[#A0A8B6] text-[12px] font-normal truncate max-w-[180px]">
-              Manish Jangra@gmail..
+              {userInfo?.email}
             </p>
           </div>
         </div>
@@ -102,7 +156,7 @@ export default function DashboardPage() {
                   INR
                 </span>
                 <span className="text-[#F5B301] font-semibold text-[22px] tracking-tight mt-0.5">
-                  ₹ 45828.25
+                  ₹ {walletInfo ? walletInfo.inrBalance.toFixed(2) : "0.00"}
                 </span>
               </div>
             </div>
@@ -131,6 +185,7 @@ export default function DashboardPage() {
                 alt="USDT Logo"
                 width={48}
                 height={48}
+                priority
                 className="w-12 h-12 object-contain shrink-0"
               />
               <div className="flex flex-col">
@@ -138,7 +193,7 @@ export default function DashboardPage() {
                   USDT
                 </span>
                 <span className="text-[#F5B301] font-bold text-sm mt-0.5">
-                  0
+                  {walletInfo?.usdtBalance ?? 0}
                 </span>
               </div>
             </div>
@@ -177,13 +232,14 @@ export default function DashboardPage() {
                   USDT-BEP20
                 </span>
                 <span className="text-[#F5B301] font-bold text-sm mt-0.5">
-                  0
+                  {walletInfo?.usdtBep20Balance ?? 0}
                 </span>
               </div>
             </div>
             <Link
               href="/transfer"
-              className="w-full bg-[#38B6FF] hover:opacity-95 active:opacity-90 text-white font-bold text-[13px] py-2.5 flex items-center justify-center space-x-1.5 transition-all cursor-pointer">
+              className="w-full bg-[#38B6FF] hover:opacity-95 active:opacity-90 text-white font-bold text-[13px] py-2.5 flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
+            >
               <ArrowUp className="w-3.5 h-3.5 stroke-[2.5]" />
               <span>Transfer</span>
             </Link>
@@ -206,7 +262,7 @@ export default function DashboardPage() {
                 Level Income
               </span>
               <span className="text-black font-medium text-[20px] mt-0.5">
-                ₹ 0
+                ₹ {walletInfo?.levelIncome ?? 0}
               </span>
             </div>
             <div className="w-12 h-12 rounded-full bg-[#7980A8] text-white flex items-center justify-center shadow-xs">
@@ -226,7 +282,7 @@ export default function DashboardPage() {
                 LTD Income
               </span>
               <span className="text-black font-medium text-[20px] mt-0.5">
-                ₹ 0
+                ₹ {walletInfo?.ltdIncome ?? 0}
               </span>
             </div>
             <div className="w-12 h-12 rounded-full bg-[#7980A8] text-white flex items-center justify-center shadow-xs">
@@ -246,7 +302,7 @@ export default function DashboardPage() {
                 Total Income
               </span>
               <span className="text-black font-medium text-[20px] mt-0.5">
-                ₹ 0
+                ₹ {walletInfo?.totalIncome ?? 0}
               </span>
             </div>
             <div className="w-12 h-12 rounded-full bg-[#7980A8] text-white flex items-center justify-center shadow-xs">
@@ -256,65 +312,63 @@ export default function DashboardPage() {
             </div>
           </Link>
         </section>
-
-      
       </main>
 
-        {/* Refer & Introduce Section */}
-        <section className="w-full pt-4 flex flex-col items-center text-center bg-white">
-          {/* 3D Gift Box Graphic */}
-          <div className="w-24 h-24 relative mb-2 flex items-center justify-center">
-            <svg
-              viewBox="0 0 100 100"
-              className="w-full h-full drop-shadow-md"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              {/* Box Body */}
-              <rect x="20" y="42" width="60" height="46" rx="4" fill="#38B6FF" />
-              {/* Box Lid */}
-              <rect x="16" y="34" width="68" height="12" rx="3" fill="#58C4FF" />
-              {/* Ribbon Vertical */}
-              <rect x="44" y="34" width="12" height="54" fill="#F43F5E" />
-              {/* Ribbon Loops */}
-              <path d="M 50 34 C 40 18 20 22 36 34 Z" fill="#FB7185" />
-              <path d="M 50 34 C 60 18 80 22 64 34 Z" fill="#FB7185" />
-              <circle cx="50" cy="34" r="5" fill="#E11D48" />
-            </svg>
-          </div>
+      {/* Refer & Introduce Section */}
+      <section className="w-full pt-4 flex flex-col items-center text-center bg-white">
+        {/* 3D Gift Box Graphic */}
+        <div className="w-24 h-24 relative mb-2 flex items-center justify-center">
+          <svg
+            viewBox="0 0 100 100"
+            className="w-full h-full drop-shadow-md"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            {/* Box Body */}
+            <rect x="20" y="42" width="60" height="46" rx="4" fill="#38B6FF" />
+            {/* Box Lid */}
+            <rect x="16" y="34" width="68" height="12" rx="3" fill="#58C4FF" />
+            {/* Ribbon Vertical */}
+            <rect x="44" y="34" width="12" height="54" fill="#F43F5E" />
+            {/* Ribbon Loops */}
+            <path d="M 50 34 C 40 18 20 22 36 34 Z" fill="#FB7185" />
+            <path d="M 50 34 C 60 18 80 22 64 34 Z" fill="#FB7185" />
+            <circle cx="50" cy="34" r="5" fill="#E11D48" />
+          </svg>
+        </div>
 
-          <h3 className="text-black font-bold text-[15px] max-w-[290px] leading-snug mb-4">
-            Refer and introduce the ind-X_Seller to your contacts!
-          </h3>
+        <h3 className="text-black font-bold text-[15px] max-w-[290px] leading-snug mb-4">
+          Refer and introduce the ind-X_Seller to your contacts!
+        </h3>
 
-          {/* Referral URL Box */}
-          <div className="bg-[#E4E9F2] rounded-2xl p-3.5 px-4 flex items-center justify-between w-full max-w-[380px] border border-slate-200/80 mb-4 shadow-inner">
-            <span className="text-[11px] text-[#2C3E50] font-medium truncate pr-2 select-all">
-              {referUrl}
-            </span>
-            <button
-              type="button"
-              onClick={handleCopy}
-              className="text-[#1C82D9] hover:opacity-80 active:scale-90 transition-all shrink-0 cursor-pointer p-1"
-              title="Copy link"
-            >
-              {copied ? (
-                <Check className="w-5 h-5 text-emerald-600 stroke-[2.5]" />
-              ) : (
-                <Copy className="w-5 h-5 stroke-[2]" />
-              )}
-            </button>
-          </div>
-
-          {/* Refer Button */}
+        {/* Referral URL Box */}
+        <div className="bg-[#E4E9F2] rounded-2xl p-3.5 px-4 flex items-center justify-between w-full max-w-[380px] border border-slate-200/80 mb-4 shadow-inner">
+          <span className="text-[11px] text-[#2C3E50] font-medium truncate pr-2 select-all">
+            {referUrl}
+          </span>
           <button
             type="button"
             onClick={handleCopy}
-            className="bg-[#1C82D9] hover:bg-[#1875CD] active:scale-[0.98] text-white font-bold text-[16px] py-3 px-14 rounded-full shadow-[0_4px_14px_rgba(28,130,217,0.35)] transition-all cursor-pointer tracking-wide"
+            className="text-[#1C82D9] hover:opacity-80 active:scale-90 transition-all shrink-0 cursor-pointer p-1"
+            title="Copy link"
           >
-            Refer
+            {copied ? (
+              <Check className="w-5 h-5 text-emerald-600 stroke-[2.5]" />
+            ) : (
+              <Copy className="w-5 h-5 stroke-[2]" />
+            )}
           </button>
-        </section>
+        </div>
+
+        {/* Refer Button */}
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="bg-[#1C82D9] hover:bg-[#1875CD] active:scale-[0.98] text-white font-bold text-[16px] py-3 px-14 rounded-full shadow-[0_4px_14px_rgba(28,130,217,0.35)] transition-all cursor-pointer tracking-wide"
+        >
+          Refer
+        </button>
+      </section>
     </div>
   );
 }

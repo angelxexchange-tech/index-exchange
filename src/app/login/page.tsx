@@ -3,12 +3,128 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { IndxLogo } from "@/components/IndxLogo";
-import { User, Lock, Eye, EyeOff, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { User, Lock, Eye, EyeOff, X, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
+  const router = useRouter();
+
+  // Login form state
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Forgot Password modal state
   const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
+  const [forgotIdentifier, setForgotIdentifier] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotStatus, setForgotStatus] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+
+    if (!identifier.trim()) {
+      setErrorMsg("Please enter your Mobile Number or User ID.");
+      return;
+    }
+
+    if (!password.trim()) {
+      setErrorMsg("Please enter your Password.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          identifier: identifier.trim(),
+          password: password.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setErrorMsg(data.message);
+        setLoading(false);
+        return;
+      }
+
+      // Save user ID to localStorage and cookie for middleware
+      if (data.user && data.user.userId) {
+        localStorage.setItem("userId", data.user.userId);
+        document.cookie = `userId=${data.user.userId}; path=/; max-age=2592000; SameSite=Lax`;
+      }
+
+      // Login success -> redirect to dashboard
+      router.push("/dashboard");
+    } catch (err: any) {
+      console.error("Login submission error:", err);
+      setErrorMsg("Network error. Please check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotStatus(null);
+
+    if (!forgotIdentifier.trim()) {
+      setForgotStatus({
+        type: "error",
+        message: "Please enter your Mobile Number or User ID.",
+      });
+      return;
+    }
+
+    setForgotLoading(true);
+
+    try {
+      const response = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          identifier: forgotIdentifier.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setForgotStatus({
+          type: "error",
+          message: data.message,
+        });
+      } else {
+        setForgotStatus({
+          type: "success",
+          message: data.message,
+        });
+      }
+    } catch (err: any) {
+      console.error("Forgot Password submission error:", err);
+      setForgotStatus({
+        type: "error",
+        message: "Network error. Please try again.",
+      });
+    } finally {
+      setForgotLoading(false);
+    }
+  };
 
   return (
     <div className="relative flex flex-col justify-between w-full h-full min-h-screen bg-white overflow-hidden select-none font-sans">
@@ -50,8 +166,7 @@ export default function LoginPage() {
 
         {/* Input Fields */}
         <div className="w-full max-w-[320px] mx-auto space-y-5">
-
-          {/* Username */}
+          {/* Username / Mobile / User ID */}
           <div className="relative flex items-center w-full">
             {/* Left Icon */}
             <div className="absolute left-0 z-20 w-[52px] h-[52px] rounded-full bg-white border border-[#D9D9D9] shadow-[0_2px_8px_rgba(0,0,0,0.08)] flex items-center justify-center">
@@ -64,6 +179,8 @@ export default function LoginPage() {
                 type="text"
                 placeholder="Enter Mobile Number/ User Id"
                 autoComplete="off"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 className="w-full bg-transparent outline-none text-[12px] text-[#4A5568] placeholder:text-[#C7C7C7]"
               />
             </div>
@@ -82,6 +199,8 @@ export default function LoginPage() {
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter Password"
                 autoComplete="off"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-transparent outline-none text-[12px] text-[#4A5568] placeholder:text-[#C7C7C7]"
               />
 
@@ -99,28 +218,46 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {/* Error Banner */}
+          {errorMsg && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-600 rounded-2xl text-xs font-medium text-center animate-in fade-in duration-200">
+              {errorMsg}
+            </div>
+          )}
+
           {/* Forgot Password */}
           <div className="flex justify-end pr-2">
             <button
               type="button"
-              onClick={() => setShowForgotPasswordModal(true)}
+              onClick={() => {
+                setForgotStatus(null);
+                setShowForgotPasswordModal(true);
+              }}
               className="text-[11px] font-semibold text-[#2A79C8] underline cursor-pointer hover:opacity-80 transition-opacity"
             >
               Forget Password?
             </button>
           </div>
-
         </div>
 
         {/* Action Section */}
         <div className="w-full flex flex-col items-center space-y-5">
           {/* Login Button */}
-          <Link
-            href="/dashboard"
-            className="w-[64%] max-w-[240px] py-3 rounded-full bg-gradient-to-r from-[#40B1FA] via-[#31A9F6] to-[#2099F3] hover:opacity-95 active:scale-[0.98] text-white font-bold text-[18px] shadow-[0_6px_20px_rgba(49,169,246,0.45)] transition-all cursor-pointer flex items-center justify-center tracking-wide font-sans text-center"
+          <button
+            type="button"
+            onClick={handleLogin}
+            disabled={loading}
+            className="w-[64%] max-w-[240px] py-3 rounded-full bg-gradient-to-r from-[#40B1FA] via-[#31A9F6] to-[#2099F3] hover:opacity-95 active:scale-[0.98] disabled:opacity-75 text-white font-bold text-[18px] shadow-[0_6px_20px_rgba(49,169,246,0.45)] transition-all cursor-pointer flex items-center justify-center tracking-wide font-sans text-center"
           >
-            Login
-          </Link>
+            {loading ? (
+              <div className="flex items-center space-x-2">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Logging in...</span>
+              </div>
+            ) : (
+              "Login"
+            )}
+          </button>
 
           {/* Bottom Account Text & Signup Link */}
           <div className="flex flex-col items-center text-center">
@@ -181,18 +318,41 @@ export default function LoginPage() {
                     type="text"
                     placeholder="Enter Mobile Number/ User Id"
                     autoComplete="off"
+                    value={forgotIdentifier}
+                    onChange={(e) => setForgotIdentifier(e.target.value)}
                     className="w-full bg-transparent outline-none text-[12px] text-[#4A5568] placeholder:text-[#C7C7C7]"
                   />
                 </div>
               </div>
 
+              {/* Forgot Status Alert */}
+              {forgotStatus && (
+                <div
+                  className={`w-full max-w-[320px] p-3 mb-4 text-xs font-medium text-center rounded-2xl ${
+                    forgotStatus.type === "success"
+                      ? "bg-green-50 text-green-700 border border-green-200"
+                      : "bg-red-50 text-red-600 border border-red-200"
+                  }`}
+                >
+                  {forgotStatus.message}
+                </div>
+              )}
+
               {/* Submit Button */}
               <button
                 type="button"
-                onClick={() => setShowForgotPasswordModal(false)}
-                className="w-[60%] max-w-[220px] py-3 rounded-full bg-gradient-to-r from-[#40B1FA] via-[#31A9F6] to-[#2099F3] hover:opacity-95 active:scale-[0.98] text-white font-bold text-[18px] shadow-[0_6px_20px_rgba(49,169,246,0.45)] transition-all cursor-pointer flex items-center justify-center tracking-wide font-sans"
+                onClick={handleForgotPassword}
+                disabled={forgotLoading}
+                className="w-[60%] max-w-[220px] py-3 rounded-full bg-gradient-to-r from-[#40B1FA] via-[#31A9F6] to-[#2099F3] hover:opacity-95 active:scale-[0.98] disabled:opacity-75 text-white font-bold text-[18px] shadow-[0_6px_20px_rgba(49,169,246,0.45)] transition-all cursor-pointer flex items-center justify-center tracking-wide font-sans"
               >
-                Submit
+                {forgotLoading ? (
+                  <div className="flex items-center space-x-2">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Sending...</span>
+                  </div>
+                ) : (
+                  "Submit"
+                )}
               </button>
             </div>
           </div>
