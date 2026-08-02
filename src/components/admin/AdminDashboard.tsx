@@ -30,6 +30,10 @@ import {
   Layers,
   Sparkles,
   QrCode,
+  Eye,
+  EyeOff,
+  Lock,
+  UserCheck,
 } from "lucide-react";
 
 interface AdminDashboardProps {
@@ -79,6 +83,17 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
   const [qrPreview, setQrPreview] = useState("");
   const [savingDepositSettings, setSavingDepositSettings] = useState(false);
   const [depositSettingsAlert, setDepositSettingsAlert] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+
+  // Admin Credentials Settings state
+  const [settingsCurrentPass, setSettingsCurrentPass] = useState("");
+  const [settingsNewAdminId, setSettingsNewAdminId] = useState(adminUser?.adminId || "admin");
+  const [settingsNewPass, setSettingsNewPass] = useState("");
+  const [settingsConfirmPass, setSettingsConfirmPass] = useState("");
+  const [settingsName, setSettingsName] = useState(adminUser?.name || "Super Admin");
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [savingAdminSettings, setSavingAdminSettings] = useState(false);
+  const [adminSettingsAlert, setAdminSettingsAlert] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
   // Search & Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -298,6 +313,57 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
       setDepositSettingsAlert({ type: "error", msg: "Network error saving deposit settings." });
     } finally {
       setSavingDepositSettings(false);
+    }
+  };
+
+  const handleSaveAdminSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminSettingsAlert(null);
+
+    if (!settingsCurrentPass.trim()) {
+      setAdminSettingsAlert({ type: "error", msg: "Please enter your Current Password to verify identity." });
+      return;
+    }
+
+    if (settingsNewPass && settingsNewPass.trim().length < 6) {
+      setAdminSettingsAlert({ type: "error", msg: "New Password must be at least 6 characters long." });
+      return;
+    }
+
+    if (settingsNewPass && settingsNewPass !== settingsConfirmPass) {
+      setAdminSettingsAlert({ type: "error", msg: "New Password and Confirm Password do not match." });
+      return;
+    }
+
+    setSavingAdminSettings(true);
+
+    try {
+      const res = await fetch("/api/admin/auth/change-credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          adminId: adminUser?.adminId || "admin",
+          currentPassword: settingsCurrentPass.trim(),
+          newAdminId: settingsNewAdminId.trim(),
+          newPassword: settingsNewPass.trim(),
+          newName: settingsName.trim(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setAdminSettingsAlert({ type: "error", msg: data.message || "Failed to update credentials." });
+      } else {
+        setAdminSettingsAlert({ type: "success", msg: "Admin credentials & password updated successfully in MongoDB!" });
+        setSettingsCurrentPass("");
+        setSettingsNewPass("");
+        setSettingsConfirmPass("");
+      }
+    } catch (err) {
+      setAdminSettingsAlert({ type: "error", msg: "Network error updating admin credentials." });
+    } finally {
+      setSavingAdminSettings(false);
     }
   };
 
@@ -1762,6 +1828,144 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                   className="w-full h-12 rounded-xl bg-gradient-to-r from-[#3CB3FA] via-[#31A9F6] to-[#2099F3] text-white font-bold text-sm shadow-md hover:opacity-95 cursor-pointer"
                 >
                   {savingDepositSettings ? "Saving Deposit Details to MongoDB..." : "Save Deposit Details to Database"}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* ADMIN ACCOUNT & SECURITY SETTINGS TAB */}
+          {activeTab === "settings" && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold text-white flex items-center space-x-2">
+                    <Shield className="w-5 h-5 text-[#31A9F6]" />
+                    <span>Admin Account & Login Security Settings</span>
+                  </h2>
+                  <p className="text-xs text-slate-400">
+                    Update your admin login ID, display name, and password. Requires current password verification for security.
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleSaveAdminSettings} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5 max-w-xl shadow-md">
+                {/* Admin Display Name */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-300">Admin Display Name</label>
+                  <div className="relative flex items-center">
+                    <UserCheck className="absolute left-3.5 w-4 h-4 text-slate-500" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Super Admin"
+                      value={settingsName}
+                      onChange={(e) => setSettingsName(e.target.value)}
+                      className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 text-xs text-white font-semibold outline-none focus:border-[#31A9F6]"
+                    />
+                  </div>
+                </div>
+
+                {/* Admin ID / Login Username */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-300">Admin Login ID (Username)</label>
+                  <div className="relative flex items-center">
+                    <Shield className="absolute left-3.5 w-4 h-4 text-slate-500" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. admin"
+                      value={settingsNewAdminId}
+                      onChange={(e) => setSettingsNewAdminId(e.target.value)}
+                      className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 text-xs text-white font-mono font-bold outline-none focus:border-[#31A9F6]"
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-800/80 pt-4 space-y-4">
+                  <h3 className="text-xs font-bold text-[#31A9F6] uppercase tracking-wider">Change Admin Password</h3>
+
+                  {/* Current Password */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-300">Current Password (Required for verification)</label>
+                    <div className="relative flex items-center">
+                      <Lock className="absolute left-3.5 w-4 h-4 text-slate-500" />
+                      <input
+                        type={showCurrentPass ? "text" : "password"}
+                        required
+                        placeholder="Enter your current password"
+                        value={settingsCurrentPass}
+                        onChange={(e) => setSettingsCurrentPass(e.target.value)}
+                        className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-10 text-xs text-white outline-none focus:border-[#31A9F6]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrentPass(!showCurrentPass)}
+                        className="absolute right-3 text-slate-500 hover:text-slate-300 p-1"
+                      >
+                        {showCurrentPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* New Password */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-300">New Password (Leave blank to keep unchanged)</label>
+                    <div className="relative flex items-center">
+                      <Lock className="absolute left-3.5 w-4 h-4 text-slate-500" />
+                      <input
+                        type={showNewPass ? "text" : "password"}
+                        placeholder="Enter new password (min. 6 chars)"
+                        value={settingsNewPass}
+                        onChange={(e) => setSettingsNewPass(e.target.value)}
+                        className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-10 text-xs text-white outline-none focus:border-[#31A9F6]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPass(!showNewPass)}
+                        className="absolute right-3 text-slate-500 hover:text-slate-300 p-1"
+                      >
+                        {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Confirm New Password */}
+                  {settingsNewPass && (
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-300">Confirm New Password</label>
+                      <div className="relative flex items-center">
+                        <Lock className="absolute left-3.5 w-4 h-4 text-slate-500" />
+                        <input
+                          type={showNewPass ? "text" : "password"}
+                          required={!!settingsNewPass}
+                          placeholder="Re-enter new password"
+                          value={settingsConfirmPass}
+                          onChange={(e) => setSettingsConfirmPass(e.target.value)}
+                          className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 text-xs text-white outline-none focus:border-[#31A9F6]"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {adminSettingsAlert && (
+                  <div
+                    className={`p-3.5 rounded-xl text-xs font-semibold text-center border animate-in fade-in duration-200 ${
+                      adminSettingsAlert.type === "success"
+                        ? "bg-emerald-950 border-emerald-800 text-emerald-300"
+                        : "bg-rose-950 border-rose-800 text-rose-300"
+                    }`}
+                  >
+                    {adminSettingsAlert.msg}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={savingAdminSettings}
+                  className="w-full h-12 rounded-xl bg-gradient-to-r from-[#3CB3FA] via-[#31A9F6] to-[#2099F3] text-white font-bold text-sm shadow-md hover:opacity-95 cursor-pointer"
+                >
+                  {savingAdminSettings ? "Updating Credentials in MongoDB..." : "Save Admin Credentials & Password"}
                 </button>
               </form>
             </div>
