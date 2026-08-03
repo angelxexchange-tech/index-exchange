@@ -1,43 +1,29 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronDown, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 export default function AddBankAccountPage() {
   const router = useRouter();
   const { isAuthenticated, userId, isMounted } = useAuthGuard();
 
-  const [selectedBank, setSelectedBank] = useState("");
+  const [bankName, setBankName] = useState("");
   const [ifscCode, setIfscCode] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [accountHolderName, setAccountHolderName] = useState("");
 
-  const [bankList, setBankList] = useState<string[]>([]);
-  const [loadingBanks, setLoadingBanks] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [statusAlert, setStatusAlert] = useState<{ type: "success" | "error"; message: string } | null>(null);
-
-  useEffect(() => {
-    fetch("/api/banks")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && Array.isArray(data.banks)) {
-          setBankList(data.banks.map((b: any) => b.bankName));
-        }
-      })
-      .catch((err) => console.error("Error fetching banks:", err))
-      .finally(() => setLoadingBanks(false));
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatusAlert(null);
 
-    if (!selectedBank || !ifscCode.trim() || !accountNumber.trim() || !accountHolderName.trim()) {
+    if (!bankName.trim() || !ifscCode.trim() || !accountNumber.trim() || !accountHolderName.trim()) {
       setStatusAlert({ type: "error", message: "Please fill in all fields." });
       return;
     }
@@ -50,7 +36,7 @@ export default function AddBankAccountPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId,
-          bankName: selectedBank,
+          bankName: bankName.trim(),
           ifscCode: ifscCode.trim().toUpperCase(),
           accountNumber: accountNumber.trim(),
           accountHolderName: accountHolderName.trim(),
@@ -111,29 +97,16 @@ export default function AddBankAccountPage() {
 
           {/* Form Fields */}
           <form onSubmit={handleSubmit} className="space-y-5 pt-1">
-            {/* Select Bank */}
+            {/* Enter Bank Name */}
             <div className="relative w-full">
-              <select
-                value={selectedBank}
-                onChange={(e) => setSelectedBank(e.target.value)}
+              <input
+                type="text"
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                placeholder="Enter Bank Name"
                 required
-                disabled={loadingBanks}
-                className={`w-full bg-white border border-slate-200/90 rounded-full px-5 py-3.5 pr-10 text-[14px] font-medium outline-none shadow-[0_2px_8px_rgba(0,0,0,0.04)] appearance-none cursor-pointer focus:border-[#1C82D9] transition-all ${
-                  selectedBank ? "text-slate-800" : "text-[#A0A8B6]"
-                }`}
-              >
-                <option value="" disabled hidden>
-                  {loadingBanks ? "Loading Supported Banks..." : "Select Bank"}
-                </option>
-                {bankList.map((bank) => (
-                  <option key={bank} value={bank} className="text-slate-800">
-                    {bank}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                <ChevronDown className="w-5 h-5 stroke-[2.5]" />
-              </div>
+                className="w-full bg-white border border-slate-200/90 rounded-full px-5 py-3.5 text-[14px] font-medium text-slate-800 placeholder:text-[#A0A8B6] outline-none shadow-[0_2px_8px_rgba(0,0,0,0.04)] focus:border-[#1C82D9] transition-all"
+              />
             </div>
 
             {/* Enter IFSC */}

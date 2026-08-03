@@ -44,7 +44,7 @@ interface AdminDashboardProps {
 export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardProps) {
   // Navigation tab state
   const [activeTab, setActiveTab] = useState<
-    "overview" | "users" | "deposits" | "withdrawals" | "transactions" | "wallets" | "rates" | "banks" | "limits" | "depositSettings" | "settings"
+    "overview" | "users" | "deposits" | "withdrawals" | "transactions" | "wallets" | "rates" | "limits" | "depositSettings" | "settings"
   >("overview");
 
   // Mobile sidebar drawer state
@@ -61,12 +61,6 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
   const [rates, setRates] = useState<Record<string, number>>({});
   const [savingRates, setSavingRates] = useState(false);
   const [ratesAlert, setRatesAlert] = useState<{ type: "success" | "error"; msg: string } | null>(null);
-
-  // Supported Banks state
-  const [adminBanks, setAdminBanks] = useState<any[]>([]);
-  const [newBankInput, setNewBankInput] = useState("");
-  const [addingBank, setAddingBank] = useState(false);
-  const [bankAlert, setBankAlert] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
   // Withdrawal Limits & Fee state
   const [limits, setLimits] = useState<{ minAmount: string; maxAmount: string; feePercentage: string }>({
@@ -147,14 +141,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
         setRates(ratesData.rates);
       }
 
-      // 5. Supported Banks
-      const banksRes = await fetch("/api/admin/banks");
-      const banksData = await banksRes.json();
-      if (banksData.success && banksData.banks) {
-        setAdminBanks(banksData.banks);
-      }
-
-      // 6. Withdrawal limits
+      // 5. Withdrawal limits
       const limitsRes = await fetch("/api/withdrawal-settings");
       const limitsData = await limitsRes.json();
       if (limitsData.success && limitsData.settings) {
@@ -163,61 +150,6 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
           maxAmount: limitsData.settings.maxAmount?.toString() || "",
           feePercentage: limitsData.settings.feePercentage?.toString() || "",
         });
-      }
-
-      // 7. Deposit Settings (QR & TRC20 Address)
-      const depRes = await fetch("/api/deposit-settings");
-      const depData = await depRes.json();
-      if (depData.success && depData.settings) {
-        setDepositAddressInput(depData.settings.depositAddress || "");
-        setQrImageDataInput(depData.settings.qrImageData || "");
-        setQrPreview(depData.settings.qrImageData || "");
-      }
-    } catch (err) {
-      console.error("Dashboard fetch error:", err);
-    } finally {
-      setLoading(false);
-      if (isManualRefresh) setRefreshing(false);
-    }
-  };
-
-  const handleAddBank = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBankAlert(null);
-    if (!newBankInput.trim()) return;
-    setAddingBank(true);
-
-    try {
-      const res = await fetch("/api/admin/banks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bankName: newBankInput.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        setBankAlert({ type: "error", msg: data.message || "Failed to add bank." });
-      } else {
-        setBankAlert({ type: "success", msg: data.message });
-        setNewBankInput("");
-        fetchData();
-      }
-    } catch (err) {
-      setBankAlert({ type: "error", msg: "Network error adding bank." });
-    } finally {
-      setAddingBank(false);
-    }
-  };
-
-  const handleToggleBank = async (bankId: string, isEnabled: boolean) => {
-    try {
-      const res = await fetch("/api/admin/banks", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bankId, isEnabled: !isEnabled }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        fetchData();
       }
     } catch (err) {
       console.error("Toggle bank error:", err);
@@ -729,19 +661,6 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
 
           <button
             type="button"
-            onClick={() => setActiveTab("banks")}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
-              activeTab === "banks"
-                ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
-            }`}
-          >
-            <Building2 className="w-4 h-4 text-emerald-400" />
-            <span>Supported Banks</span>
-          </button>
-
-          <button
-            type="button"
             onClick={() => setActiveTab("limits")}
             className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
               activeTab === "limits"
@@ -809,7 +728,6 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                   { key: "transactions", label: "Transactions", icon: History },
                   { key: "wallets", label: "System Wallets", icon: Wallet },
                   { key: "rates", label: "Exchange Rates", icon: DollarSign },
-                  { key: "banks", label: "Supported Banks", icon: Building2 },
                   { key: "limits", label: "Withdrawal Limits", icon: Settings },
                   { key: "depositSettings", label: "Deposit Settings (QR)", icon: QrCode },
                 ].map((item) => {
@@ -1591,86 +1509,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
             </div>
           )}
 
-          {/* SUPPORTED BANKS TAB */}
-          {activeTab === "banks" && (
-            <div className="space-y-6 animate-in fade-in duration-300">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-base sm:text-lg font-bold text-white flex items-center space-x-2">
-                    <Building2 className="w-5 h-5 text-emerald-400" />
-                    <span>Manage Supported Banks ({adminBanks.length})</span>
-                  </h2>
-                  <p className="text-xs text-slate-400">
-                    Add or toggle supported banks. Banks enabled here appear immediately in the user Add Bank dropdown.
-                  </p>
-                </div>
-              </div>
 
-              {/* Add New Bank Form */}
-              <form onSubmit={handleAddBank} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 max-w-xl shadow-md">
-                <h3 className="text-sm font-bold text-white">Add New Supported Bank</h3>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="text"
-                    placeholder="Enter Bank Name (e.g. Canara Bank)..."
-                    value={newBankInput}
-                    onChange={(e) => setNewBankInput(e.target.value)}
-                    className="flex-1 h-11 bg-slate-950 border border-slate-800 rounded-xl px-4 text-xs text-white placeholder-slate-500 outline-none focus:border-[#31A9F6]"
-                  />
-                  <button
-                    type="submit"
-                    disabled={addingBank}
-                    className="px-5 h-11 rounded-xl bg-gradient-to-r from-[#3CB3FA] via-[#31A9F6] to-[#2099F3] text-white font-bold text-xs cursor-pointer hover:opacity-95 shadow-md"
-                  >
-                    {addingBank ? "Adding..." : "+ Add Bank"}
-                  </button>
-                </div>
-
-                {bankAlert && (
-                  <div
-                    className={`p-3 rounded-xl text-xs font-semibold text-center border ${
-                      bankAlert.type === "success"
-                        ? "bg-emerald-950 border-emerald-800 text-emerald-300"
-                        : "bg-rose-950 border-rose-800 text-rose-300"
-                    }`}
-                  >
-                    {bankAlert.msg}
-                  </div>
-                )}
-              </form>
-
-              {/* Supported Banks List */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 max-w-xl shadow-md">
-                <h3 className="text-sm font-bold text-white">Supported Banks Directory</h3>
-                {adminBanks.length === 0 ? (
-                  <p className="text-xs text-slate-500 py-4 text-center">No supported banks added yet.</p>
-                ) : (
-                  <div className="divide-y divide-slate-800/80">
-                    {adminBanks.map((b) => (
-                      <div key={b._id} className="py-3 flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <Building2 className="w-4 h-4 text-slate-400" />
-                          <span className="text-xs font-bold text-white">{b.bankName}</span>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => handleToggleBank(b._id, b.isEnabled)}
-                          className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                            b.isEnabled
-                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20"
-                              : "bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500/20"
-                          }`}
-                        >
-                          {b.isEnabled ? "Enabled 🟢" : "Disabled 🔴"}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
 
           {/* WITHDRAWAL LIMITS TAB */}
           {activeTab === "limits" && (
