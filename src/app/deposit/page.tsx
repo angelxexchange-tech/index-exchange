@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Copy, CheckCircle2, Loader2 } from "lucide-react";
+import { ArrowLeft, Copy, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 export default function DepositPage() {
@@ -19,7 +19,13 @@ export default function DepositPage() {
   const [explorerUrl, setExplorerUrl] = useState<string>("https://tronscan.org");
   const [loadingSettings, setLoadingSettings] = useState(true);
 
-  useEffect(() => {
+  // Deposit Request Submission Form state
+  const [depositAmount, setDepositAmount] = useState("");
+  const [txnId, setTxnId] = useState("");
+  const [submittingDeposit, setSubmittingDeposit] = useState(false);
+  const [depositAlert, setDepositAlert] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  const loadData = () => {
     if (!isAuthenticated || !userId) return;
 
     // 1. Fetch user wallet balances
@@ -53,6 +59,10 @@ export default function DepositPage() {
       })
       .catch((err) => console.error("Fetch deposit settings error:", err))
       .finally(() => setLoadingSettings(false));
+  };
+
+  useEffect(() => {
+    loadData();
   }, [isAuthenticated, userId]);
 
   const handleCopy = () => {
@@ -60,6 +70,52 @@ export default function DepositPage() {
     navigator.clipboard.writeText(depositAddress);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDepositSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setDepositAlert(null);
+
+    const numAmount = Number(depositAmount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      setDepositAlert({ type: "error", message: "Please enter a valid deposit amount." });
+      return;
+    }
+
+    if (!txnId.trim()) {
+      setDepositAlert({ type: "error", message: "Please enter the Transaction ID / Hash." });
+      return;
+    }
+
+    setSubmittingDeposit(true);
+
+    try {
+      const res = await fetch("/api/user/deposit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          amount: numAmount,
+          transactionId: txnId.trim(),
+          asset: "USDT",
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setDepositAlert({ type: "error", message: data.message || "Failed to submit deposit request." });
+      } else {
+        setDepositAlert({ type: "success", message: data.message });
+        setDepositAmount("");
+        setTxnId("");
+        loadData();
+      }
+    } catch (err) {
+      setDepositAlert({ type: "error", message: "Network error submitting deposit request." });
+    } finally {
+      setSubmittingDeposit(false);
+    }
   };
 
   if (!isMounted || !isAuthenticated) {
@@ -154,6 +210,82 @@ export default function DepositPage() {
             )}
           </div>
         </div>
+
+        {/* Deposit Proof Submission Card Form */}
+        <form onSubmit={handleDepositSubmit} className="w-full bg-white rounded-[24px] p-4 shadow-[0_2px_12px_rgba(0,0,0,0.04)] border border-slate-100/80 space-y-3.5">
+          <h2 className="text-slate-900 font-bold text-[15px]">
+            Submit Deposit Details
+          </h2>
+
+          {/* Amount Field */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1 pl-0.5">
+              Deposited Amount (USDT)
+            </label>
+            <div className="bg-[#FFF8E7] rounded-xl p-3 flex items-center border border-[#FBEECB]">
+              <input
+                type="number"
+                step="any"
+                required
+                value={depositAmount}
+                onChange={(e) => setDepositAmount(e.target.value)}
+                placeholder="Enter deposited USDT amount (e.g. 100)"
+                className="w-full bg-transparent font-medium text-slate-800 placeholder:text-[#A0A8B6] outline-none text-[13.5px]"
+              />
+            </div>
+          </div>
+
+          {/* Transaction ID / Hash Field */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1 pl-0.5">
+              Transaction ID / Hash (TXID)
+            </label>
+            <div className="bg-[#FFF8E7] rounded-xl p-3 flex items-center border border-[#FBEECB]">
+              <input
+                type="text"
+                required
+                value={txnId}
+                onChange={(e) => setTxnId(e.target.value)}
+                placeholder="Enter TRC20 Transaction Hash / TXID"
+                className="w-full bg-transparent font-medium text-slate-800 placeholder:text-[#A0A8B6] outline-none text-[13.5px] font-mono"
+              />
+            </div>
+          </div>
+
+          {/* Alert Notification */}
+          {depositAlert && (
+            <div
+              className={`p-3 rounded-2xl text-xs font-semibold text-center border animate-in fade-in flex items-center justify-center space-x-2 ${
+                depositAlert.type === "success"
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                  : "bg-rose-50 border-rose-200 text-rose-700"
+              }`}
+            >
+              {depositAlert.type === "success" ? (
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+              ) : (
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+              )}
+              <span>{depositAlert.message}</span>
+            </div>
+          )}
+
+          {/* Submit Deposit Request Button */}
+          <button
+            type="submit"
+            disabled={submittingDeposit}
+            className="w-full py-3.5 rounded-full bg-gradient-to-r from-[#38B6FF] via-[#249CEE] to-[#1C82D9] hover:opacity-95 active:scale-[0.98] disabled:opacity-75 text-white font-bold text-[16px] shadow-[0_4px_16px_rgba(28,130,217,0.35)] transition-all cursor-pointer flex items-center justify-center space-x-2"
+          >
+            {submittingDeposit ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Submitting Request...</span>
+              </>
+            ) : (
+              <span>Submit Deposit Request</span>
+            )}
+          </button>
+        </form>
 
         {/* Balance Card Section */}
         <section className="w-full bg-white rounded-[20px] border border-[#1C82D9]/70 p-4 shadow-[0_2px_8px_rgba(0,0,0,0.03)] space-y-3.5 mt-2">
