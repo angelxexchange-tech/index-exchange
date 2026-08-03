@@ -99,7 +99,7 @@ export default function DashboardPage() {
             <div className="flex items-center  rounded-md p-2 w-full max-w-[195px] space-x-1  z-10">
               <Link
                 href="/sell"
-                className="flex-1 py-1.5 px-2 text-[11px] font-bold rounded text-slate-800 bg-white border border-slate-300/80 text-center cursor-pointer hover:bg-slate-50 transition-colors"
+                className="flex-1 py-1.5 px-2 text-[11px] font-bold rounded text-[#1C82D9] bg-white border border-slate-300/80 text-center cursor-pointer hover:bg-slate-50 transition-colors"
               >
                 Sell
               </Link>

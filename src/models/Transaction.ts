@@ -1,9 +1,11 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
+export type TransactionAsset = "INR" | "TRX" | "USDT" | "BNB" | "USDT-BEP20";
+
 export interface ITransaction extends Document {
   userId: string;
   type: "deposit" | "withdrawal" | "sell" | "transfer";
-  asset: "INR" | "TRX" | "USDT" | "BNB" | "USDT-BEP20";
+  asset: TransactionAsset;
   amount: number;
   status: "pending" | "completed" | "rejected";
   address?: string;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import User from "@/models/User";
-import Transaction from "@/models/Transaction";
+import Transaction, { TransactionAsset } from "@/models/Transaction";
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,7 +10,15 @@ export async function POST(req: NextRequest) {
 
     const numAmount = Number(amount);
     const cleanTxId = transactionId ? String(transactionId).trim() : "";
-    const targetAsset = asset ? String(asset).trim().toUpperCase() : "USDT";
+    const targetAsset = (asset ? String(asset).trim().toUpperCase() : "USDT") as TransactionAsset;
+    const allowedAssets: TransactionAsset[] = ["INR", "TRX", "USDT", "BNB", "USDT-BEP20"];
+
+    if (!allowedAssets.includes(targetAsset)) {
+      return NextResponse.json(
+        { success: false, message: `Invalid asset '${targetAsset}'. Supported assets: ${allowedAssets.join(", ")}.` },
+        { status: 400 }
+      );
+    }
 
     if (!userId || isNaN(numAmount) || numAmount <= 0) {
       return NextResponse.json(
