@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import Transaction from "@/models/Transaction";
 import Wallet from "@/models/Wallet";
+import Rate from "@/models/Rate";
+import { processReferralCommissions } from "@/lib/referral";
 
 export async function POST(req: NextRequest) {
   try {
@@ -54,6 +56,23 @@ export async function POST(req: NextRequest) {
       if (transaction.type === "deposit" && targetField) {
         (wallet as any)[targetField] = ((wallet as any)[targetField] || 0) + transaction.amount;
         await wallet.save();
+
+        // Process referral commissions for approved deposit
+        let depositAmountInINR = transaction.amount;
+        if (transaction.asset !== "INR") {
+          const rateDoc = await Rate.findOne({ asset: transaction.asset.toUpperCase() });
+          if (rateDoc && rateDoc.rate > 0) {
+            depositAmountInINR = transaction.amount * rateDoc.rate;
+          }
+        }
+
+        await processReferralCommissions({
+          userId: transaction.userId,
+          transactionType: "deposit",
+          amountInINR: depositAmountInINR,
+          asset: transaction.asset,
+          referenceId: transaction.referenceId,
+        });
       }
     } else if (action === "reject") {
       transaction.status = "rejected";

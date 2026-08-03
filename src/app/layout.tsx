@@ -11,6 +11,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://indxexchange.com"),
   title: "ind-X - Exchange Platform & Admin Portal",
   description: "ind-X Mobile Application and SaaS Admin Portal created with Next.js",
 };

@@ -4,6 +4,7 @@ import User from "@/models/User";
 import Wallet from "@/models/Wallet";
 import Transaction from "@/models/Transaction";
 import Rate from "@/models/Rate";
+import { processReferralCommissions } from "@/lib/referral";
 
 export async function POST(req: NextRequest) {
   try {
@@ -84,6 +85,15 @@ export async function POST(req: NextRequest) {
       asset,
       amount,
       status: "completed",
+      referenceId: refId,
+    });
+
+    // Process referral commission for sell transaction
+    await processReferralCommissions({
+      userId,
+      transactionType: "sell",
+      amountInINR: expectedINR,
+      asset,
       referenceId: refId,
     });
 

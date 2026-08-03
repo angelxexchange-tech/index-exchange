@@ -1,18 +1,26 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Users, Search, User, Smartphone, X, Loader2 } from "lucide-react";
 
-export default function SignupPage() {
+function SignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Form states
   const [referralId, setReferralId] = useState("");
   const [name, setName] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
+
+  useEffect(() => {
+    const refFromUrl = searchParams.get("ref") || searchParams.get("referralId") || searchParams.get("m");
+    if (refFromUrl) {
+      setReferralId(refFromUrl);
+    }
+  }, [searchParams]);
 
   // Request & Modal states
   const [loading, setLoading] = useState(false);
@@ -323,5 +331,13 @@ export default function SignupPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-white" />}>
+      <SignupForm />
+    </Suspense>
   );
 }

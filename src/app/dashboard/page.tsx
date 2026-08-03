@@ -9,7 +9,7 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 export default function DashboardPage() {
   const { isAuthenticated, userId, isMounted, clearAuthAndRedirect } = useAuthGuard();
   const [copied, setCopied] = useState(false);
-  const referUrl = "https://ind-x.pro/SignUp?m=tor9Nomc8JTSMA4o6/bNow==";
+  const [referUrl, setReferUrl] = useState("https://indxexchange.com/signup");
 
   // Live user & wallet state
   const [userInfo, setUserInfo] = useState<{
@@ -45,6 +45,8 @@ export default function DashboardPage() {
         if (data.success) {
           setUserInfo(data.user);
           setWalletInfo(data.wallet);
+          const origin = typeof window !== "undefined" ? window.location.origin : "https://indxexchange.com";
+          setReferUrl(`${origin}/signup?ref=${data.user.userId}`);
         } else {
           clearAuthAndRedirect();
         }
