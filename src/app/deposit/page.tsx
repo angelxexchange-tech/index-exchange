@@ -9,8 +9,8 @@ export default function DepositPage() {
   const { isAuthenticated, userId, isMounted, clearAuthAndRedirect } = useAuthGuard();
   const [copied, setCopied] = useState(false);
 
-  const [trxBalance, setTrxBalance] = useState(0);
   const [usdtBalance, setUsdtBalance] = useState(0);
+  const [usdtBep20Balance, setUsdtBep20Balance] = useState(0);
 
   // Dynamic deposit details from Admin MongoDB API
   const [depositAddress, setDepositAddress] = useState<string>("");
@@ -41,8 +41,8 @@ export default function DepositPage() {
       .then((data) => {
         if (!data) return;
         if (data.success && data.wallet) {
-          setTrxBalance(data.wallet.trxBalance ?? 0);
           setUsdtBalance(data.wallet.usdtBalance ?? 0);
+          setUsdtBep20Balance(data.wallet.usdtBep20Balance ?? 0);
         }
       })
       .catch((err) => console.error("Fetch profile error:", err));
@@ -314,21 +314,12 @@ export default function DepositPage() {
             Balance
           </h2>
 
-          {/* Side by Side TRX & USDT Boxes */}
+          {/* Dynamic Asset Box */}
           <div className="flex items-center space-x-3">
-            {/* TRX Box */}
-            <div className="flex-1 bg-[#B2B8C6] rounded-[14px] py-3 px-2 flex flex-col items-center justify-center text-center text-white min-h-[78px]">
-              <span className="font-bold text-[13px] tracking-wider">TRX</span>
+            <div className="flex-1 bg-[#1C82D9] rounded-[14px] py-3 px-2 flex flex-col items-center justify-center text-center text-white min-h-[78px] shadow-md border border-[#1875CD]">
+              <span className="font-bold text-[13px] tracking-wider">{selectedAsset === "USDT" ? "USDT (TRC20)" : "USDT (BEP20)"}</span>
               <span className="font-extrabold text-[16px] tracking-tight mt-0.5">
-                {trxBalance}
-              </span>
-            </div>
-
-            {/* USDT Box */}
-            <div className="flex-1 bg-[#B2B8C6] rounded-[14px] py-3 px-2 flex flex-col items-center justify-center text-center text-white min-h-[78px]">
-              <span className="font-bold text-[13px] tracking-wider">USDT</span>
-              <span className="font-extrabold text-[16px] tracking-tight mt-0.5">
-                {usdtBalance}
+                {selectedAsset === "USDT" ? usdtBalance : usdtBep20Balance}
               </span>
             </div>
           </div>
