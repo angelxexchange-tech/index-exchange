@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     const numAmount = Number(amount);
     const cleanTxId = transactionId ? String(transactionId).trim() : "";
     const targetAsset = (asset ? String(asset).trim().toUpperCase() : "USDT") as TransactionAsset;
-    const allowedAssets: TransactionAsset[] = ["INR", "TRX", "USDT", "BNB", "USDT-BEP20"];
+    const allowedAssets: TransactionAsset[] = ["INR", "USDT", "USDT-BEP20"];
 
     if (!allowedAssets.includes(targetAsset)) {
       return NextResponse.json(

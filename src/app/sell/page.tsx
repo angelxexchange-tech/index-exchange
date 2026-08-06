@@ -19,8 +19,6 @@ export default function SellPage() {
     inrBalance: number;
     usdtBalance: number;
     usdtBep20Balance: number;
-    trxBalance: number;
-    bnbBalance: number;
   } | null>(null);
 
   const [rates, setRates] = useState<Record<string, number>>({});

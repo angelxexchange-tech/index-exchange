@@ -20,9 +20,7 @@ export default function DashboardPage() {
 
   const [walletInfo, setWalletInfo] = useState<{
     inrBalance: number;
-    trxBalance: number;
     usdtBalance: number;
-    bnbBalance: number;
     usdtBep20Balance: number;
     levelIncome: number;
     ltdIncome: number;

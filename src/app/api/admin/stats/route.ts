@@ -50,15 +50,11 @@ export async function GET() {
     const allWallets = await Wallet.find().lean();
     let totalINRBalance = 0;
     let totalUSDTBalance = 0;
-    let totalTRXBalance = 0;
-    let totalBNBBalance = 0;
-
+    
     allWallets.forEach((w: any) => {
       totalINRBalance += w.inrBalance || 0;
       totalUSDTBalance += (w.usdtBalance || 0) + (w.usdtBep20Balance || 0);
-      totalTRXBalance += w.trxBalance || 0;
-      totalBNBBalance += w.bnbBalance || 0;
-    });
+          });
 
     // 4. Recent registered users (top 8)
     const recentUsers = await User.find().sort({ createdAt: -1 }).limit(8).lean();
@@ -80,8 +76,7 @@ export async function GET() {
         systemBalances: {
           inr: totalINRBalance,
           usdt: totalUSDTBalance,
-          trx: totalTRXBalance,
-          bnb: totalBNBBalance,
+          
         },
       },
       recentUsers: recentUsers.map((u: any) => ({

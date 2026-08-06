@@ -3,9 +3,7 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 export interface IWallet extends Document {
   userId: string;
   inrBalance: number;
-  trxBalance: number;
   usdtBalance: number;
-  bnbBalance: number;
   usdtBep20Balance: number;
   levelIncome: number;
   ltdIncome: number;
@@ -25,15 +23,7 @@ const WalletSchema = new Schema<IWallet>(
       type: Number,
       default: 0,
     },
-    trxBalance: {
-      type: Number,
-      default: 0,
-    },
     usdtBalance: {
-      type: Number,
-      default: 0,
-    },
-    bnbBalance: {
       type: Number,
       default: 0,
     },
