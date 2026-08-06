@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  ChevronDown,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
@@ -321,20 +320,7 @@ export default function TransferPage() {
               Available Balance
             </h2>
 
-            {/* Asset Selector Dropdown Tabs */}
-            <div className="relative">
-              <select
-                value={selectedAsset}
-                onChange={(e) => setSelectedAsset(e.target.value as any)}
-                className="bg-slate-100 text-[#1C82D9] font-bold text-xs px-3 py-1.5 rounded-lg border border-slate-300 outline-none cursor-pointer pr-6 appearance-none"
-              >
-                <option value="USDT">USDT (TRC20)</option>
-                <option value="TRX">TRX</option>
-                <option value="USDT-BEP20">USDT (BEP20)</option>
-                <option value="BNB">BNB</option>
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-[#1C82D9] absolute right-2 top-2.5 pointer-events-none stroke-[2.5]" />
-            </div>
+
           </div>
 
           {/* Balance Cards Box */}
