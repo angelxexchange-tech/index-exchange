@@ -48,8 +48,6 @@ export async function POST(req: NextRequest) {
     const fieldMap: Record<string, keyof typeof wallet> = {
       USDT: "usdtBalance",
       "USDT-BEP20": "usdtBep20Balance",
-      TRX: "trxBalance",
-      BNB: "bnbBalance",
     };
 
     const targetField = fieldMap[asset.toUpperCase()];

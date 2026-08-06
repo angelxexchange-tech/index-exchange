@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IRate extends Document {
-  asset: string; // e.g. "USDT", "USDT-BEP20", "TRX", "BNB"
+  asset: string; // e.g. "USDT", "USDT-BEP20"
   rate: number;  // Rate in INR per unit, set dynamically by Admin
   updatedAt: Date;
 }

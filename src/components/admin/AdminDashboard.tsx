@@ -1057,40 +1057,8 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                       </div>
                     </div>
                   </div>
-                      <span className="text-xs font-mono text-rose-400">1 TRX = ₹{rates.TRX}</span>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-slate-300">Selling Price (INR)</label>
-                      <div className="relative flex items-center">
-                        <span className="absolute left-3.5 text-slate-400 text-sm font-bold">₹</span>
-                        <input
-                          type="number"
-                          step="any"
-                          value={rates.TRX || ""}
-                          onChange={(e) => setRates({ ...rates, TRX: parseFloat(e.target.value) || 0 })}
-                          className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-4 text-sm text-white font-bold outline-none focus:border-rose-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                      <span className="text-xs font-mono text-purple-400">1 BNB = ₹{rates.BNB}</span>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-slate-300">Selling Price (INR)</label>
-                      <div className="relative flex items-center">
-                        <span className="absolute left-3.5 text-slate-400 text-sm font-bold">₹</span>
-                        <input
-                          type="number"
-                          step="any"
-                          value={rates.BNB || ""}
-                          onChange={(e) => setRates({ ...rates, BNB: parseFloat(e.target.value) || 0 })}
-                          className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-4 text-sm text-white font-bold outline-none focus:border-purple-500"
-                        />
-                      </div>
-                    </div>
-                  </div>
+                      <span className="text-xs font-mono text-rose-400">
+                      <span className="text-xs font-mono text-purple-400">
                 </div>
 
                 {/* Alert Notification */}
