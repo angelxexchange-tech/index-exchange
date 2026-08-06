@@ -202,7 +202,7 @@ export default function DashboardPage() {
             {/* Buttons Row */}
             <div className="flex items-center">
               <Link
-                href="/transfer"
+                href="/transfer?asset=USDT-TRC20"
                 className="flex-1 bg-[#38B6FF] hover:opacity-95 active:opacity-90 text-white font-bold text-[13px] py-2.5 flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
               >
                 <ArrowUp className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -239,7 +239,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <Link
-              href="/transfer"
+              href="/transfer?asset=USDT-BEP20"
               className="w-full bg-[#38B6FF] hover:opacity-95 active:opacity-90 text-white font-bold text-[13px] py-2.5 flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
             >
               <ArrowUp className="w-3.5 h-3.5 stroke-[2.5]" />

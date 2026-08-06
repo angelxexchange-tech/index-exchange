@@ -19,7 +19,7 @@ export default function TransferPage() {
 
   const [walletAddress, setWalletAddress] = useState("");
   const [amount, setAmount] = useState("");
-  const [selectedAsset, setSelectedAsset] = useState<"USDT">("USDT");
+  const [selectedAsset, setSelectedAsset] = useState<"USDT-TRC20" | "USDT-BEP20">("USDT-TRC20");
   const [authMethod, setAuthMethod] = useState<"OTP" | "Google TOTP">("OTP");
   const [otpCode, setOtpCode] = useState("");
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -69,10 +69,22 @@ export default function TransferPage() {
     loadUserData();
   }, [isAuthenticated, userId]);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const asset = urlParams.get("asset");
+      if (asset === "USDT-BEP20") {
+        setSelectedAsset("USDT-BEP20");
+      } else {
+        setSelectedAsset("USDT-TRC20");
+      }
+    }
+  }, []);
+
   // Current available balance for the selected asset
   const getAvailableBalance = () => {
     if (!walletInfo) return 0;
-    return walletInfo.usdtBalance ?? 0;
+    return selectedAsset === "USDT-BEP20" ? (walletInfo.usdtBep20Balance ?? 0) : (walletInfo.usdtBalance ?? 0);
   };
 
   const currentAvailableBalance = getAvailableBalance();
@@ -310,18 +322,11 @@ export default function TransferPage() {
           <div className="flex items-center space-x-3">
 
 
-            {/* USDT Box */}
-            <div
-              onClick={() => setSelectedAsset("USDT")}
-              className={`flex-1 rounded-[14px] py-3 px-2 flex flex-col items-center justify-center text-center cursor-pointer transition-all border ${
-                selectedAsset === "USDT"
-                  ? "bg-[#1C82D9] text-white border-[#1875CD] shadow-md scale-[1.02]"
-                  : "bg-[#B2B8C6] text-white border-transparent opacity-80"
-              }`}
-            >
-              <span className="font-bold text-[13px] tracking-wider">USDT</span>
+            {/* Dynamic Asset Box */}
+            <div className="flex-1 bg-[#1C82D9] text-white border-[#1875CD] shadow-md rounded-[14px] py-3 px-2 flex flex-col items-center justify-center text-center transition-all border">
+              <span className="font-bold text-[13px] tracking-wider">{selectedAsset}</span>
               <span className="font-extrabold text-[16px] tracking-tight mt-0.5">
-                {walletInfo?.usdtBalance ?? 0}
+                {currentAvailableBalance}
               </span>
             </div>
           </div>
