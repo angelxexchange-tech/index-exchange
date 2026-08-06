@@ -192,7 +192,7 @@ export default function DashboardPage() {
               />
               <div className="flex flex-col">
                 <span className="text-black font-semibold text-[16px] tracking-tight">
-                  USDT
+                  USDT-TRC20
                 </span>
                 <span className="text-[#F5B301] font-bold text-sm mt-0.5">
                   {walletInfo?.usdtBalance ?? 0}
