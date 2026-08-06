@@ -19,7 +19,7 @@ export default function TransferPage() {
 
   const [walletAddress, setWalletAddress] = useState("");
   const [amount, setAmount] = useState("");
-  const [selectedAsset, setSelectedAsset] = useState<"USDT" | "TRX" | "USDT-BEP20" | "BNB">("USDT");
+  const [selectedAsset, setSelectedAsset] = useState<"USDT">("USDT");
   const [authMethod, setAuthMethod] = useState<"OTP" | "Google TOTP">("OTP");
   const [otpCode, setOtpCode] = useState("");
   const [showOtpModal, setShowOtpModal] = useState(false);
@@ -72,29 +72,12 @@ export default function TransferPage() {
   // Current available balance for the selected asset
   const getAvailableBalance = () => {
     if (!walletInfo) return 0;
-    switch (selectedAsset) {
-      case "TRX":
-        return walletInfo.trxBalance ?? 0;
-      case "USDT-BEP20":
-        return walletInfo.usdtBep20Balance ?? 0;
-      case "BNB":
-        return walletInfo.bnbBalance ?? 0;
-      case "USDT":
-      default:
-        return walletInfo.usdtBalance ?? 0;
-    }
+    return walletInfo.usdtBalance ?? 0;
   };
 
   const currentAvailableBalance = getAvailableBalance();
 
-  const handlePercentageClick = (pct: number) => {
-    if (currentAvailableBalance <= 0) {
-      setAmount("0");
-      return;
-    }
-    const val = ((currentAvailableBalance * pct) / 100).toFixed(4);
-    setAmount(val);
-  };
+
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -317,7 +300,7 @@ export default function TransferPage() {
         <section className="w-full bg-white rounded-[20px] border border-[#1C82D9]/70 p-4 shadow-[0_2px_8px_rgba(0,0,0,0.03)] space-y-3.5">
           <div className="flex items-center justify-between">
             <h2 className="text-black font-extrabold text-[16px]">
-              Available Balance
+              Balance
             </h2>
 
 
@@ -325,20 +308,7 @@ export default function TransferPage() {
 
           {/* Balance Cards Box */}
           <div className="flex items-center space-x-3">
-            {/* TRX Box */}
-            <div
-              onClick={() => setSelectedAsset("TRX")}
-              className={`flex-1 rounded-[14px] py-3 px-2 flex flex-col items-center justify-center text-center cursor-pointer transition-all border ${
-                selectedAsset === "TRX"
-                  ? "bg-[#1C82D9] text-white border-[#1875CD] shadow-md scale-[1.02]"
-                  : "bg-[#B2B8C6] text-white border-transparent opacity-80"
-              }`}
-            >
-              <span className="font-bold text-[13px] tracking-wider">TRX</span>
-              <span className="font-extrabold text-[16px] tracking-tight mt-0.5">
-                {walletInfo?.trxBalance ?? 0}
-              </span>
-            </div>
+
 
             {/* USDT Box */}
             <div
@@ -362,7 +332,7 @@ export default function TransferPage() {
               href="/transfer-report"
               className="bg-[#1C82D9] hover:bg-[#1875CD] active:scale-[0.98] text-white font-bold text-[12.5px] py-2.5 px-6 rounded-[12px] text-center shadow-xs transition-all cursor-pointer whitespace-nowrap"
             >
-              View Transfer Report
+              View Withdrawal History
             </Link>
           </div>
         </section>
@@ -373,12 +343,8 @@ export default function TransferPage() {
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-black font-bold text-[14px] font-sans">
-                Recipient (User ID / Mobile / Wallet)
+                Wallet Address
               </label>
-              <span className="text-[11px] text-emerald-600 font-semibold flex items-center space-x-1">
-                <Sparkles className="w-3 h-3" />
-                <span>Internal P2P Instant</span>
-              </span>
             </div>
 
             <div className="flex items-center w-full bg-white rounded-full border border-slate-200/90 shadow-[0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden focus-within:border-[#1C82D9] transition-all">
@@ -386,13 +352,13 @@ export default function TransferPage() {
                 type="text"
                 value={walletAddress}
                 onChange={(e) => setWalletAddress(e.target.value)}
-                placeholder="Enter User ID (e.g. IDX12345), Mobile No, or Wallet"
+                placeholder="Enter Wallet Address"
                 className="w-full bg-transparent px-5 py-3.5 text-[13.5px] font-medium text-slate-800 placeholder:text-[#A0A8B6] outline-none"
               />
               <button
                 type="button"
                 onClick={() => setShowScanner(true)}
-                className="bg-[#1C82D9] hover:bg-[#1875CD] active:bg-[#1466B8] text-white px-4 py-3.5 flex items-center justify-center shrink-0 cursor-pointer transition-colors rounded-r-full"
+                className="bg-[#1C82D9] hover:bg-[#1875CD] active:bg-[#1466B8] text-white px-4 py-3.5 flex items-center justify-center shrink-0 cursor-pointer transition-colors"
                 title="Scan QR Code to Auto Fill"
               >
                 <QrCode className="w-5 h-5 stroke-[2.2]" />
@@ -404,36 +370,19 @@ export default function TransferPage() {
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-black font-bold text-[14px] font-sans">
-                Amount ({selectedAsset})
+                Amount
               </label>
-              <span className="text-[11px] text-slate-500 font-medium">
-                Max: {currentAvailableBalance} {selectedAsset}
-              </span>
             </div>
 
-            <div className="w-full bg-white rounded-full border border-slate-200/90 shadow-[0_2px_8px_rgba(0,0,0,0.04)] px-4 py-2 flex items-center justify-between focus-within:border-[#1C82D9] transition-all">
+            <div className="w-full bg-white rounded-full border border-slate-200/90 shadow-[0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden flex items-center justify-between focus-within:border-[#1C82D9] transition-all">
               <input
                 type="number"
                 step="any"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder={`Enter ${selectedAsset} Amount`}
-                className="w-full bg-transparent text-[14px] font-medium text-slate-800 placeholder:text-[#A0A8B6] outline-none py-1.5 pr-2"
+                placeholder="Enter Amount"
+                className="w-full bg-transparent px-5 py-3.5 text-[14px] font-medium text-slate-800 placeholder:text-[#A0A8B6] outline-none"
               />
-
-              {/* Percentage Quick Selector Buttons */}
-              <div className="flex items-center space-x-1 shrink-0">
-                {[25, 50, 75, 100].map((pct) => (
-                  <button
-                    key={pct}
-                    type="button"
-                    onClick={() => handlePercentageClick(pct)}
-                    className="bg-[#1C82D9] hover:bg-[#1875CD] active:scale-95 text-white font-bold text-[10.5px] px-2 py-1 rounded-md transition-all cursor-pointer whitespace-nowrap"
-                  >
-                    {pct}%
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
 
@@ -476,7 +425,7 @@ export default function TransferPage() {
                   <span>Processing Transfer...</span>
                 </>
               ) : (
-                <span>Submit Transfer</span>
+                <span>Submit</span>
               )}
             </button>
           </div>
