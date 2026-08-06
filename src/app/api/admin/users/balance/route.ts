@@ -69,8 +69,6 @@ export async function POST(req: NextRequest) {
         userId: wallet.userId,
         inrBalance: wallet.inrBalance,
         usdtBalance: wallet.usdtBalance,
-        trxBalance: wallet.trxBalance,
-        bnbBalance: wallet.bnbBalance,
       },
     });
   } catch (error: any) {

@@ -19,9 +19,7 @@ export async function GET() {
     const userList = users.map((u: any) => {
       const userWallet = walletMap[u.userId] || {
         inrBalance: 0,
-        trxBalance: 0,
         usdtBalance: 0,
-        bnbBalance: 0,
         usdtBep20Balance: 0,
         levelIncome: 0,
         ltdIncome: 0,
@@ -38,9 +36,7 @@ export async function GET() {
         createdAt: u.createdAt,
         wallet: {
           inrBalance: userWallet.inrBalance || 0,
-          trxBalance: userWallet.trxBalance || 0,
           usdtBalance: userWallet.usdtBalance || 0,
-          bnbBalance: userWallet.bnbBalance || 0,
           usdtBep20Balance: userWallet.usdtBep20Balance || 0,
           levelIncome: userWallet.levelIncome || 0,
           ltdIncome: userWallet.ltdIncome || 0,
