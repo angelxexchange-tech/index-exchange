@@ -38,9 +38,7 @@ export async function POST(req: NextRequest) {
 
     // Determine target balance field based on asset
     let balanceKey: "trxBalance" | "usdtBalance" | "usdtBep20Balance" | "bnbBalance" = "usdtBalance";
-    if (asset === "TRX") balanceKey = "trxBalance";
     else if (asset === "USDT-BEP20") balanceKey = "usdtBep20Balance";
-    else if (asset === "BNB") balanceKey = "bnbBalance";
     else balanceKey = "usdtBalance";
 
     const currentSenderBalance = senderWallet[balanceKey] || 0;

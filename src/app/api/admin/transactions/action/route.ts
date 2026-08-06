@@ -43,8 +43,6 @@ export async function POST(req: NextRequest) {
       INR: "inrBalance",
       USDT: "usdtBalance",
       "USDT-BEP20": "usdtBep20Balance",
-      TRX: "trxBalance",
-      BNB: "bnbBalance",
     };
 
     const targetField = fieldMap[transaction.asset.toUpperCase()];
