@@ -5,7 +5,8 @@ import DepositSetting from "@/models/DepositSetting";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { depositAddress, qrImageData, network, explorerUrl } = body;
+    const { depositAddress, qrImageData, network, explorerUrl, asset } = body;
+    const targetAsset = asset === "USDT-BEP20" ? "USDT-BEP20" : "USDT";
 
     if (!depositAddress || typeof depositAddress !== "string" || depositAddress.trim() === "") {
       return NextResponse.json(
@@ -23,19 +24,20 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
 
-    let setting = await DepositSetting.findOne();
+    let setting = await DepositSetting.findOne({ asset: targetAsset });
     if (!setting) {
       setting = new DepositSetting({
+        asset: targetAsset,
         depositAddress: depositAddress.trim(),
         qrImageData,
-        network: network?.trim() || "TRON Network (TRC20)",
-        explorerUrl: explorerUrl?.trim() || "https://tronscan.org",
+        network: network?.trim() || (targetAsset === "USDT-BEP20" ? "Binance Smart Chain (BEP20)" : "TRON Network (TRC20)"),
+        explorerUrl: explorerUrl?.trim() || (targetAsset === "USDT-BEP20" ? "https://bscscan.com" : "https://tronscan.org"),
       });
     } else {
       setting.depositAddress = depositAddress.trim();
       setting.qrImageData = qrImageData;
-      setting.network = network?.trim() || "TRON Network (TRC20)";
-      setting.explorerUrl = explorerUrl?.trim() || "https://tronscan.org";
+      setting.network = network?.trim() || (targetAsset === "USDT-BEP20" ? "Binance Smart Chain (BEP20)" : "TRON Network (TRC20)");
+      setting.explorerUrl = explorerUrl?.trim() || (targetAsset === "USDT-BEP20" ? "https://bscscan.com" : "https://tronscan.org");
     }
 
     await setting.save();

@@ -77,6 +77,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
   const [qrPreview, setQrPreview] = useState("");
   const [savingDepositSettings, setSavingDepositSettings] = useState(false);
   const [depositSettingsAlert, setDepositSettingsAlert] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [depositAssetType, setDepositAssetType] = useState<"USDT" | "USDT-BEP20">("USDT");
 
   // Admin Credentials Settings state
   const [settingsCurrentPass, setSettingsCurrentPass] = useState("");
@@ -230,8 +231,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
         body: JSON.stringify({
           depositAddress: depositAddressInput.trim(),
           qrImageData: qrImageDataInput,
-          network: "TRON Network (TRC20)",
-          explorerUrl: "https://tronscan.org",
+          asset: depositAssetType,
         }),
       });
 
@@ -239,7 +239,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
       if (!res.ok || !data.success) {
         setDepositSettingsAlert({ type: "error", msg: data.message || "Failed to update deposit settings." });
       } else {
-        setDepositSettingsAlert({ type: "success", msg: "Deposit TRC20 Wallet Address & QR Code saved to MongoDB!" });
+        setDepositSettingsAlert({ type: "success", msg: `Deposit Wallet Address & QR Code saved to MongoDB for ${depositAssetType}!` });
       }
     } catch (err) {
       setDepositSettingsAlert({ type: "error", msg: "Network error saving deposit settings." });
@@ -1602,7 +1602,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                 <div>
                   <h2 className="text-base sm:text-lg font-bold text-white flex items-center space-x-2">
                     <QrCode className="w-5 h-5 text-purple-400" />
-                    <span>Deposit TRC20 Wallet Address & QR Code Settings</span>
+                    <span>Deposit Wallet Address & QR Code Settings</span>
                   </h2>
                   <p className="text-xs text-slate-400">
                     Upload your deposit QR Code image and enter your TRC20 wallet address. Values saved here update the user Deposit page immediately.
@@ -1611,9 +1611,22 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
               </div>
 
               <form onSubmit={handleSaveDepositSettings} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5 max-w-xl shadow-md">
+                {/* Select Asset */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-300">Select Asset to Update</label>
+                  <select
+                    value={depositAssetType}
+                    onChange={(e) => setDepositAssetType(e.target.value as "USDT" | "USDT-BEP20")}
+                    className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-4 text-xs text-white font-bold outline-none focus:border-[#31A9F6]"
+                  >
+                    <option value="USDT">USDT (TRC20)</option>
+                    <option value="USDT-BEP20">USDT (BEP20)</option>
+                  </select>
+                </div>
+
                 {/* Deposit Address Field */}
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-300">USDT TRC20 Wallet Address</label>
+                  <label className="text-xs font-semibold text-slate-300">Wallet Address for {depositAssetType}</label>
                   <input
                     type="text"
                     required

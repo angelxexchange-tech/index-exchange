@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IDepositSetting extends Document {
+  asset: string;
   network: string;
   depositAddress: string;
   qrImageData: string;
@@ -10,6 +11,10 @@ export interface IDepositSetting extends Document {
 
 const DepositSettingSchema = new Schema<IDepositSetting>(
   {
+    asset: {
+      type: String,
+      default: "USDT",
+    },
     network: {
       type: String,
       default: "TRON Network (TRC20)",

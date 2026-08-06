@@ -47,15 +47,26 @@ export default function DepositPage() {
       })
       .catch((err) => console.error("Fetch profile error:", err));
 
+    let currentAsset = "USDT";
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get("asset") === "USDT-BEP20") {
+        currentAsset = "USDT-BEP20";
+      }
+    }
+
     // 2. Fetch live deposit settings set by Admin
-    fetch("/api/deposit-settings")
+    fetch(`/api/deposit-settings?asset=${currentAsset}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.settings) {
           setDepositAddress(data.settings.depositAddress || "");
           setQrImageData(data.settings.qrImageData || "");
-          setNetworkName(data.settings.network || "TRON Network (TRC20)");
-          setExplorerUrl(data.settings.explorerUrl || "https://tronscan.org");
+          setNetworkName(data.settings.network || (currentAsset === "USDT-BEP20" ? "Binance Smart Chain (BEP20)" : "TRON Network (TRC20)"));
+          setExplorerUrl(data.settings.explorerUrl || (currentAsset === "USDT-BEP20" ? "https://bscscan.com" : "https://tronscan.org"));
+        } else {
+          setNetworkName(currentAsset === "USDT-BEP20" ? "Binance Smart Chain (BEP20)" : "TRON Network (TRC20)");
+          setExplorerUrl(currentAsset === "USDT-BEP20" ? "https://bscscan.com" : "https://tronscan.org");
         }
       })
       .catch((err) => console.error("Fetch deposit settings error:", err))
@@ -256,8 +267,8 @@ export default function DepositPage() {
                 required
                 value={txnId}
                 onChange={(e) => setTxnId(e.target.value)}
-                placeholder="Enter TRC20 Transaction Hash / TXID"
-                className="w-full bg-transparent font-medium text-slate-800 placeholder:text-[#A0A8B6] outline-none text-[13.5px] font-mono"
+                placeholder={`Enter ${selectedAsset === "USDT" ? "TRC20" : "BEP20"} Transaction Hash / TXID`}
+                className="w-full bg-transparent font-medium text-slate-800 placeholder:text-[#A0A8B6] outline-none text-[13.5px]"
               />
             </div>
           </div>

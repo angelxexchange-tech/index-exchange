@@ -1,12 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import DepositSetting from "@/models/DepositSetting";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     await connectToDatabase();
 
-    const setting = await DepositSetting.findOne().lean();
+    const { searchParams } = new URL(req.url);
+    const assetParam = searchParams.get("asset");
+    const asset = assetParam === "USDT-BEP20" ? "USDT-BEP20" : "USDT";
+
+    const setting = await DepositSetting.findOne({ asset }).lean();
 
     if (!setting) {
       return NextResponse.json({
