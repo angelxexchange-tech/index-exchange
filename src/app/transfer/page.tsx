@@ -28,9 +28,7 @@ export default function TransferPage() {
   // Live Wallet balances state
   const [walletInfo, setWalletInfo] = useState<{
     inrBalance: number;
-    trxBalance: number;
     usdtBalance: number;
-    bnbBalance: number;
     usdtBep20Balance: number;
   } | null>(null);
 
