@@ -973,9 +973,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                         <div className="h-full bg-emerald-500 rounded-full w-[45%]" />
                       </div>
                     </div>
-
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-                  
+                  </div>
                 </div>
               </div>
             </div>
@@ -1057,8 +1055,6 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                       </div>
                     </div>
                   </div>
-                      <span className="text-xs font-mono text-rose-400">
-                      <span className="text-xs font-mono text-purple-400">
                 </div>
 
                 {/* Alert Notification */}
