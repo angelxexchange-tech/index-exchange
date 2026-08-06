@@ -24,6 +24,7 @@ export default function DepositPage() {
   const [txnId, setTxnId] = useState("");
   const [submittingDeposit, setSubmittingDeposit] = useState(false);
   const [depositAlert, setDepositAlert] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [selectedAsset, setSelectedAsset] = useState<"USDT" | "USDT-BEP20">("USDT");
 
   const loadData = () => {
     if (!isAuthenticated || !userId) return;
@@ -63,6 +64,15 @@ export default function DepositPage() {
 
   useEffect(() => {
     loadData();
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const asset = urlParams.get("asset");
+      if (asset === "USDT-BEP20") {
+        setSelectedAsset("USDT-BEP20");
+      } else {
+        setSelectedAsset("USDT");
+      }
+    }
   }, [isAuthenticated, userId]);
 
   const handleCopy = () => {
@@ -97,7 +107,7 @@ export default function DepositPage() {
           userId,
           amount: numAmount,
           transactionId: txnId.trim(),
-          asset: "USDT",
+          asset: selectedAsset,
         }),
       });
 
@@ -136,7 +146,7 @@ export default function DepositPage() {
             <ArrowLeft className="w-6 h-6 stroke-[2.5]" />
           </Link>
           <h1 className="text-[#1C82D9] text-[22px] tracking-tight font-bold">
-            Deposit USDT
+            Deposit {selectedAsset === "USDT" ? "USDT-TRC20" : selectedAsset}
           </h1>
         </header>
 
@@ -161,7 +171,7 @@ export default function DepositPage() {
           )}
 
           <p className="text-black font-extrabold text-[13.5px] tracking-tight text-center">
-            Send only USDT (TRC20) to this deposit address
+            Send only {selectedAsset === "USDT" ? "USDT (TRC20)" : "USDT (BEP20)"} to this deposit address
           </p>
         </div>
 
@@ -220,7 +230,7 @@ export default function DepositPage() {
           {/* Amount Field */}
           <div>
             <label className="block text-xs font-semibold text-slate-600 mb-1 pl-0.5">
-              Deposited Amount (USDT)
+              Deposited Amount ({selectedAsset})
             </label>
             <div className="bg-[#FFF8E7] rounded-xl p-3 flex items-center border border-[#FBEECB]">
               <input
@@ -229,7 +239,7 @@ export default function DepositPage() {
                 required
                 value={depositAmount}
                 onChange={(e) => setDepositAmount(e.target.value)}
-                placeholder="Enter deposited USDT amount (e.g. 100)"
+                placeholder={`Enter deposited ${selectedAsset} amount (e.g. 100)`}
                 className="w-full bg-transparent font-medium text-slate-800 placeholder:text-[#A0A8B6] outline-none text-[13.5px]"
               />
             </div>

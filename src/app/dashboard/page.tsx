@@ -209,7 +209,7 @@ export default function DashboardPage() {
                 <span>Transfer</span>
               </Link>
               <Link
-                href="/deposit"
+                href="/deposit?asset=USDT-TRC20"
                 className="flex-1 bg-[#F5B301] hover:opacity-95 active:opacity-90 text-white font-bold text-[13px] py-2.5 flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
               >
                 <ArrowDown className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -238,13 +238,23 @@ export default function DashboardPage() {
                 </span>
               </div>
             </div>
-            <Link
-              href="/transfer?asset=USDT-BEP20"
-              className="w-full bg-[#38B6FF] hover:opacity-95 active:opacity-90 text-white font-bold text-[13px] py-2.5 flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
-            >
-              <ArrowUp className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Transfer</span>
-            </Link>
+            {/* Buttons Row */}
+            <div className="flex items-center">
+              <Link
+                href="/transfer?asset=USDT-BEP20"
+                className="flex-1 bg-[#38B6FF] hover:opacity-95 active:opacity-90 text-white font-bold text-[13px] py-2.5 flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
+              >
+                <ArrowUp className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Transfer</span>
+              </Link>
+              <Link
+                href="/deposit?asset=USDT-BEP20"
+                className="flex-1 bg-[#F5B301] hover:opacity-95 active:opacity-90 text-white font-bold text-[13px] py-2.5 flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
+              >
+                <ArrowDown className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Deposit</span>
+              </Link>
+            </div>
           </div>
         </section>
 
