@@ -131,35 +131,35 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
     if (isManualRefresh) setRefreshing(true);
     try {
       // 1. Stats & recent activity
-      const statsRes = await fetch("/api/admin/stats");
+      const statsRes = await fetch("/api/admin/stats", { cache: "no-store" });
       const statsData = await statsRes.json();
       if (statsData.success) {
         setStats(statsData.stats);
       }
 
       // 2. Users list
-      const usersRes = await fetch("/api/admin/users");
+      const usersRes = await fetch("/api/admin/users", { cache: "no-store" });
       const usersData = await usersRes.json();
       if (usersData.success) {
         setUsers(usersData.users || []);
       }
 
       // 3. Transactions list
-      const txnRes = await fetch("/api/admin/transactions");
+      const txnRes = await fetch("/api/admin/transactions", { cache: "no-store" });
       const txnData = await txnRes.json();
       if (txnData.success) {
         setTransactions(txnData.transactions || []);
       }
 
       // 4. Exchange rates
-      const ratesRes = await fetch("/api/rates");
+      const ratesRes = await fetch("/api/rates", { cache: "no-store" });
       const ratesData = await ratesRes.json();
       if (ratesData.success && ratesData.rates) {
         setRates(ratesData.rates);
       }
 
       // 5. Withdrawal limits
-      const limitsRes = await fetch("/api/withdrawal-settings");
+      const limitsRes = await fetch("/api/withdrawal-settings", { cache: "no-store" });
       const limitsData = await limitsRes.json();
       if (limitsData.success && limitsData.settings) {
         setLimits({
