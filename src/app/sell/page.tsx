@@ -115,7 +115,7 @@ export default function SellPage() {
     if (numAmount > currentAvailableBalance) {
       setStatusAlert({
         type: "error",
-        message: `Insufficient ${selectedCurrency} balance. Available: ${currentAvailableBalance} ${selectedCurrency}`,
+        message: `Insufficient balance. Available: ${currentAvailableBalance} ${selectedCurrency === "USDT" ? "USDT (TRC20)" : selectedCurrency}`,
       });
       return;
     }
@@ -140,7 +140,7 @@ export default function SellPage() {
       } else {
         setStatusAlert({
           type: "success",
-          message: `Successfully sold ${numAmount} ${selectedCurrency} for ₹${data.transaction.expectedINR.toFixed(2)}!`,
+          message: `Successfully sold ${numAmount} ${selectedCurrency === "USDT" ? "USDT (TRC20)" : selectedCurrency} for ₹${data.transaction.expectedINR.toFixed(2)}!`,
         });
         setTransferAmount("");
         setExpectedAmount("");
@@ -200,7 +200,7 @@ export default function SellPage() {
                   className="w-7 h-7 object-contain shrink-0"
                 />
                 <span className="text-[#1C82D9] font-bold text-[14px]">
-                  {selectedCurrency}
+                  {selectedCurrency === "USDT" ? "USDT (TRC20)" : selectedCurrency}
                 </span>
                 <ChevronDown className="w-4 h-4 text-slate-700 stroke-[2.5]" />
               </div>
@@ -237,7 +237,7 @@ export default function SellPage() {
               <span>
                 Balance :{" "}
                 <span className="font-bold text-slate-800">
-                  {currentAvailableBalance} {selectedCurrency}
+                  {currentAvailableBalance} {selectedCurrency === "USDT" ? "USDT (TRC20)" : selectedCurrency}
                 </span>
               </span>
             </div>
@@ -415,7 +415,7 @@ export default function SellPage() {
                     />
                     <div className="flex flex-col text-left">
                       <span className="font-extrabold text-[#1C82D9] text-[16px] tracking-tight">
-                        USDT
+                        USDT (TRC20)
                       </span>
                       <span className="text-slate-600 font-medium text-[11.5px]">
                         Rate: {typeof rates.USDT === "number" ? `₹${rates.USDT}` : "Not configured"} / USDT | Bal: {walletInfo?.usdtBalance ?? 0}

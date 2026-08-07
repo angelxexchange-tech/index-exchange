@@ -348,6 +348,33 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
     fetchData();
   }, []);
 
+  // Fetch deposit settings when the active tab is depositSettings or when the asset type changes
+  useEffect(() => {
+    const fetchDepositSettings = async () => {
+      // Reset inputs immediately on change to avoid showing previous asset's data
+      setDepositAddressInput("");
+      setQrImageDataInput("");
+      setQrPreview("");
+      setDepositSettingsAlert(null);
+
+      try {
+        const res = await fetch(`/api/deposit-settings?asset=${depositAssetType}`, { cache: "no-store" });
+        const data = await res.json();
+        if (data.success && data.settings) {
+          setDepositAddressInput(data.settings.depositAddress || "");
+          setQrImageDataInput(data.settings.qrImageData || "");
+          setQrPreview(data.settings.qrImageData || "");
+        }
+      } catch (err) {
+        console.error("Fetch deposit settings error:", err);
+      }
+    };
+
+    if (activeTab === "depositSettings") {
+      fetchDepositSettings();
+    }
+  }, [depositAssetType, activeTab]);
+
   // Handle Balance Adjustment submit
   const handleBalanceSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
