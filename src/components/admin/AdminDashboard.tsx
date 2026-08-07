@@ -47,6 +47,19 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
     "overview" | "users" | "deposits" | "withdrawals" | "transactions" | "wallets" | "rates" | "limits" | "depositSettings" | "settings"
   >("overview");
 
+  // Load last active tab from localStorage on mount
+  useEffect(() => {
+    const savedTab = localStorage.getItem("adminActiveTab");
+    if (savedTab) {
+      setActiveTab(savedTab as any);
+    }
+  }, []);
+
+  // Save active tab to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem("adminActiveTab", activeTab);
+  }, [activeTab]);
+
   // Mobile sidebar drawer state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
