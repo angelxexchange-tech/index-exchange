@@ -156,7 +156,10 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
         });
       }
     } catch (err) {
-      console.error("Toggle bank error:", err);
+      console.error("Fetch data error:", err);
+    } finally {
+      setLoading(false);
+      if (isManualRefresh) setRefreshing(false);
     }
   };
 
