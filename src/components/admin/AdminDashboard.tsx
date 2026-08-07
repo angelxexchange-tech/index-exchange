@@ -2129,7 +2129,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
             {/* Transaction History for User */}
             <div className="mt-4 bg-slate-950 border border-slate-800 rounded-xl p-4">
               <h4 className="text-slate-300 text-xs font-bold uppercase tracking-wider mb-3 flex items-center space-x-1.5"><History className="w-4 h-4" /> <span>Transaction History</span></h4>
-              <div className="max-h-60 overflow-y-auto">
+              <div className="max-h-60 overflow-y-auto overflow-x-auto">
                 <table className="w-full text-left text-xs text-slate-300">
                   <thead className="bg-slate-900 text-[10px] uppercase font-semibold text-slate-500 sticky top-0">
                     <tr>
