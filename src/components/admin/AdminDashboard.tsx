@@ -1985,7 +1985,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
               {(selectedTxn.type === "withdrawal" || selectedTxn.type === "deposit") && selectedTxn.address && (
                 <div className="flex flex-col pt-2 border-t border-slate-800">
                   <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                    {selectedTxn.type === "withdrawal" ? "Destination Address / Bank Details" : "Sender Details"}
+                    {selectedTxn.type === "withdrawal" ? "Destination Address / Bank Details" : "User Submitted TxID / UTR Ref."}
                   </span>
                   <div className="mt-1 p-3 bg-slate-900 border border-slate-800 rounded-lg text-slate-300 font-mono text-xs break-all relative group">
                     {selectedTxn.address}
