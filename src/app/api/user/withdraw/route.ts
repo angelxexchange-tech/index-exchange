@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
     // 4. Generate reference ID & create pending transaction
     const refId = `WD-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    const bankDetailsStr = `${bankAccount.bankName} - A/C: ${bankAccount.accountNumber} (${bankAccount.ifscCode})`;
+    const bankDetailsStr = `${bankAccount.bankName} | A/C: ${bankAccount.accountNumber} | IFSC: ${bankAccount.ifscCode} | Name: ${bankAccount.accountHolderName}`;
 
     const transaction = await Transaction.create({
       userId,
