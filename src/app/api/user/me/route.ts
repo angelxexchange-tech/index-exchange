@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
       wallet = await Wallet.create({
         userId: user.userId,
         inrBalance: 0,
-        usdtBalance: 0,
+        usdtTrc20Balance: 0,
         usdtBep20Balance: 0,
         levelIncome: 0,
         ltdIncome: 0,
@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
         },
         wallet: {
           inrBalance: walletObj.inrBalance,
-          usdtBalance: walletObj.usdtBalance,
+          usdtTrc20Balance: walletObj.usdtTrc20Balance,
           usdtBep20Balance: walletObj.usdtBep20Balance,
           levelIncome: walletObj.levelIncome,
           ltdIncome: walletObj.ltdIncome,

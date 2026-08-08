@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const assetParam = searchParams.get("asset");
-    const asset = assetParam === "USDT-BEP20" ? "USDT-BEP20" : "USDT";
+    const asset = assetParam === "USDT-BEP20" ? "USDT-BEP20" : "USDT-TRC20";
 
     const setting = await DepositSetting.findOne({ asset }).lean();
 

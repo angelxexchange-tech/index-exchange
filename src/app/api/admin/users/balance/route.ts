@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
 
     const fieldMap: Record<string, keyof typeof wallet> = {
       INR: "inrBalance",
-      USDT: "usdtBalance",
+      "USDT-TRC20": "usdtTrc20Balance",
       "USDT-BEP20": "usdtBep20Balance",
       
     };
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
       wallet: {
         userId: wallet.userId,
         inrBalance: wallet.inrBalance,
-        usdtBalance: wallet.usdtBalance,
+        usdtTrc20Balance: wallet.usdtTrc20Balance,
       },
     });
   } catch (error: any) {

@@ -12,12 +12,12 @@ export default function SellPage() {
   const [transferAmount, setTransferAmount] = useState("");
   const [expectedAmount, setExpectedAmount] = useState("");
   const [showTransferOutModal, setShowTransferOutModal] = useState(false);
-  const [selectedCurrency, setSelectedCurrency] = useState<"USDT" | "USDT-BEP20">("USDT");
+  const [selectedCurrency, setSelectedCurrency] = useState<"USDT-TRC20" | "USDT-BEP20">("USDT-TRC20");
 
   // Live Wallet & Rates state strictly bound to API
   const [walletInfo, setWalletInfo] = useState<{
     inrBalance: number;
-    usdtBalance: number;
+    usdtTrc20Balance: number;
     usdtBep20Balance: number;
   } | null>(null);
 
@@ -68,7 +68,7 @@ export default function SellPage() {
   const currentAvailableBalance =
     selectedCurrency === "USDT-BEP20"
       ? walletInfo?.usdtBep20Balance ?? 0
-      : walletInfo?.usdtBalance ?? 0;
+      : walletInfo?.usdtTrc20Balance ?? 0;
 
   const handleAmountChange = (val: string) => {
     setTransferAmount(val);
@@ -115,7 +115,7 @@ export default function SellPage() {
     if (numAmount > currentAvailableBalance) {
       setStatusAlert({
         type: "error",
-        message: `Insufficient balance. Available: ${currentAvailableBalance} ${selectedCurrency === "USDT" ? "USDT (TRC20)" : selectedCurrency}`,
+        message: `Insufficient balance. Available: ${currentAvailableBalance} ${selectedCurrency === "USDT-TRC20" ? "USDT (TRC20)" : selectedCurrency}`,
       });
       return;
     }
@@ -140,7 +140,7 @@ export default function SellPage() {
       } else {
         setStatusAlert({
           type: "success",
-          message: `Successfully sold ${numAmount} ${selectedCurrency === "USDT" ? "USDT (TRC20)" : selectedCurrency} for ₹${data.transaction.expectedINR.toFixed(2)}!`,
+          message: `Successfully sold ${numAmount} ${selectedCurrency === "USDT-TRC20" ? "USDT (TRC20)" : selectedCurrency} for ₹${data.transaction.expectedINR.toFixed(2)}!`,
         });
         setTransferAmount("");
         setExpectedAmount("");
@@ -200,7 +200,7 @@ export default function SellPage() {
                   className="w-7 h-7 object-contain shrink-0"
                 />
                 <span className="text-[#1C82D9] font-bold text-[14px]">
-                  {selectedCurrency === "USDT" ? "USDT (TRC20)" : selectedCurrency}
+                  {selectedCurrency === "USDT-TRC20" ? "USDT (TRC20)" : selectedCurrency}
                 </span>
                 <ChevronDown className="w-4 h-4 text-slate-700 stroke-[2.5]" />
               </div>
@@ -237,7 +237,7 @@ export default function SellPage() {
               <span>
                 Balance :{" "}
                 <span className="font-bold text-slate-800">
-                  {currentAvailableBalance} {selectedCurrency === "USDT" ? "USDT (TRC20)" : selectedCurrency}
+                  {currentAvailableBalance} {selectedCurrency === "USDT-TRC20" ? "USDT (TRC20)" : selectedCurrency}
                 </span>
               </span>
             </div>
@@ -396,11 +396,11 @@ export default function SellPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setSelectedCurrency("USDT");
+                    setSelectedCurrency("USDT-TRC20");
                     setShowTransferOutModal(false);
                   }}
                   className={`w-full border rounded-[20px] p-3.5 flex items-center justify-between transition-all cursor-pointer ${
-                    selectedCurrency === "USDT"
+                    selectedCurrency === "USDT-TRC20"
                       ? "bg-[#96DCFF] border-[#38B6FF] shadow-md"
                       : "bg-slate-50 border-slate-200 hover:bg-slate-100"
                   }`}
@@ -408,7 +408,7 @@ export default function SellPage() {
                   <div className="flex items-center space-x-3.5">
                     <Image
                       src="/images/tlogo.png"
-                      alt="USDT"
+                      alt="USDT-TRC20"
                       width={40}
                       height={40}
                       className="w-10 h-10 object-contain shrink-0"
@@ -418,7 +418,7 @@ export default function SellPage() {
                         USDT (TRC20)
                       </span>
                       <span className="text-slate-600 font-medium text-[11.5px]">
-                        Rate: {typeof rates.USDT === "number" ? `₹${rates.USDT}` : "Not configured"} / USDT | Bal: {walletInfo?.usdtBalance ?? 0}
+                        Rate: {typeof rates.USDT === "number" ? `₹${rates.USDT}` : "Not configured"} / USDT | Bal: {walletInfo?.usdtTrc20Balance ?? 0}
                       </span>
                     </div>
                   </div>

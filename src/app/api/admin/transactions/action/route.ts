@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
 
     const fieldMap: Record<string, keyof typeof wallet> = {
       INR: "inrBalance",
-      USDT: "usdtBalance",
+      "USDT-TRC20": "usdtTrc20Balance",
       "USDT-BEP20": "usdtBep20Balance",
     };
 

@@ -26,7 +26,7 @@ export async function GET() {
     allTransactions.forEach((txn: any) => {
       if (txn.type === "deposit") {
         if (txn.status === "completed") {
-          if (txn.asset === "USDT" || txn.asset === "USDT-BEP20") {
+          if (txn.asset === "USDT-TRC20" || txn.asset === "USDT-BEP20") {
             totalDepositsUSDT += txn.amount || 0;
           } else {
             totalDepositsINR += txn.amount || 0;
@@ -36,7 +36,7 @@ export async function GET() {
         }
       } else if (txn.type === "withdrawal") {
         if (txn.status === "completed") {
-          if (txn.asset === "USDT" || txn.asset === "USDT-BEP20") {
+          if (txn.asset === "USDT-TRC20" || txn.asset === "USDT-BEP20") {
             totalWithdrawalsUSDT += txn.amount || 0;
           } else {
             totalWithdrawalsINR += txn.amount || 0;
@@ -54,7 +54,7 @@ export async function GET() {
     
     allWallets.forEach((w: any) => {
       totalINRBalance += w.inrBalance || 0;
-      totalUSDTBalance += (w.usdtBalance || 0) + (w.usdtBep20Balance || 0);
+      totalUSDTBalance += (w.usdtTrc20Balance || 0) + (w.usdtBep20Balance || 0);
           });
 
     // 4. Recent registered users (top 8)

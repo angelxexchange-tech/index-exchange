@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
     await Wallet.create({
       userId,
       inrBalance: 0,
-      usdtBalance: 0,
+      usdtTrc20Balance: 0,
       usdtBep20Balance: 0,
       levelIncome: 0,
       ltdIncome: 0,

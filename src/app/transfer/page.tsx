@@ -28,7 +28,7 @@ export default function TransferPage() {
   // Live Wallet balances state
   const [walletInfo, setWalletInfo] = useState<{
     inrBalance: number;
-    usdtBalance: number;
+    usdtTrc20Balance: number;
     usdtBep20Balance: number;
   } | null>(null);
 
@@ -82,7 +82,7 @@ export default function TransferPage() {
   // Current available balance for the selected asset
   const getAvailableBalance = () => {
     if (!walletInfo) return 0;
-    return selectedAsset === "USDT-BEP20" ? (walletInfo.usdtBep20Balance ?? 0) : (walletInfo.usdtBalance ?? 0);
+    return selectedAsset === "USDT-BEP20" ? (walletInfo.usdtBep20Balance ?? 0) : (walletInfo.usdtTrc20Balance ?? 0);
   };
 
   const currentAvailableBalance = getAvailableBalance();
