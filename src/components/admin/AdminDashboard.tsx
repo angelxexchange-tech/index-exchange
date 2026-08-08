@@ -474,7 +474,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
       return matchesSearch && t.type === "deposit";
     }
     if (activeTab === "withdrawals") {
-      return matchesSearch && t.type === "withdrawal";
+      return matchesSearch && (t.type === "withdrawal" || t.type === "transfer");
     }
     if (txnFilter !== "all") {
       return matchesSearch && t.status === txnFilter;
@@ -484,7 +484,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
 
   // Pending deposits & withdrawals count
   const pendingDeposits = transactions.filter((t) => t.type === "deposit" && t.status === "pending");
-  const pendingWithdrawals = transactions.filter((t) => t.type === "withdrawal" && t.status === "pending");
+  const pendingWithdrawals = transactions.filter((t) => (t.type === "withdrawal" || t.type === "transfer") && t.status === "pending");
 
   return (
     <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col font-sans select-none overflow-x-hidden">

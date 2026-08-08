@@ -7,7 +7,7 @@ import Transaction from "@/models/Transaction";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { userId, destination, asset = "USDT-TRC20", amount } = body;
+    const { userId, destination, asset = "USDT-TRC20", amount, authMethod, verificationCode } = body;
 
     const numAmount = Number(amount);
 
@@ -29,6 +29,21 @@ export async function POST(req: NextRequest) {
         { success: false, message: "Sender user account not found." },
         { status: 404 }
       );
+    }
+
+    if (authMethod === "OTP") {
+      if (!verificationCode) {
+        return NextResponse.json({ success: false, message: "OTP code is required." }, { status: 400 });
+      }
+      if (sender.otpCode !== verificationCode) {
+        return NextResponse.json({ success: false, message: "Invalid OTP code." }, { status: 400 });
+      }
+      if (sender.otpExpiry && new Date() > sender.otpExpiry) {
+        return NextResponse.json({ success: false, message: "OTP code has expired." }, { status: 400 });
+      }
+      // Clear OTP after successful verification
+      sender.otpCode = "";
+      await sender.save();
     }
 
     let senderWallet = await Wallet.findOne({ userId });

@@ -89,7 +89,7 @@ export default function TransferPage() {
 
 
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatusAlert(null);
 
@@ -116,6 +116,28 @@ export default function TransferPage() {
         message: `Insufficient ${selectedAsset} balance. Available: ${currentAvailableBalance} ${selectedAsset}`,
       });
       return;
+    }
+
+    if (authMethod === "OTP") {
+      setSubmitting(true);
+      try {
+        const res = await fetch("/api/user/send-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          setStatusAlert({ type: "error", message: data.message || "Failed to send OTP" });
+          setSubmitting(false);
+          return;
+        }
+      } catch (err) {
+        setStatusAlert({ type: "error", message: "Network error while sending OTP." });
+        setSubmitting(false);
+        return;
+      }
+      setSubmitting(false);
     }
 
     // Trigger OTP / 2FA verification step modal

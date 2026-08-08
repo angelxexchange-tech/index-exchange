@@ -75,8 +75,8 @@ export async function POST(req: NextRequest) {
     } else if (action === "reject") {
       transaction.status = "rejected";
 
-      // If rejecting a withdrawal, refund user wallet
-      if (transaction.type === "withdrawal" && targetField) {
+      // If rejecting a withdrawal or external transfer, refund user wallet
+      if ((transaction.type === "withdrawal" || transaction.type === "transfer") && targetField) {
         (wallet as any)[targetField] = ((wallet as any)[targetField] || 0) + transaction.amount;
         await wallet.save();
       }

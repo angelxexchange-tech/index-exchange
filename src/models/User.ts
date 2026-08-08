@@ -7,6 +7,8 @@ export interface IUser extends Document {
   email?: string;
   password?: string;
   referralId?: string;
+  otpCode?: string;
+  otpExpiry?: Date;
   createdAt: Date;
 }
 
@@ -43,6 +45,13 @@ const UserSchema = new Schema<IUser>(
       type: String,
       default: "",
       trim: true,
+    },
+    otpCode: {
+      type: String,
+      default: "",
+    },
+    otpExpiry: {
+      type: Date,
     },
     createdAt: {
       type: Date,
