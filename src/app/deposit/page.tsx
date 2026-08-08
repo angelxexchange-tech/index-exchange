@@ -182,7 +182,7 @@ export default function DepositPage() {
           )}
 
           <p className="text-black font-extrabold text-[13.5px] tracking-tight text-center">
-            Send only {selectedAsset === "USDT-TRC20" ? "USDT (TRC20)" : "USDT (BEP20)"} to this deposit address
+            Send only {selectedAsset === "USDT-TRC20" ? "USDT-TRC20" : "USDT-BEP20"} to this deposit address
           </p>
         </div>
 
@@ -317,7 +317,7 @@ export default function DepositPage() {
           {/* Dynamic Asset Box */}
           <div className="flex items-center space-x-3">
             <div className="flex-1 bg-[#1C82D9] rounded-[14px] py-3 px-2 flex flex-col items-center justify-center text-center text-white min-h-[78px] shadow-md border border-[#1875CD]">
-              <span className="font-bold text-[13px] tracking-wider">{selectedAsset === "USDT-TRC20" ? "USDT (TRC20)" : "USDT (BEP20)"}</span>
+              <span className="font-bold text-[13px] tracking-wider">{selectedAsset === "USDT-TRC20" ? "USDT-TRC20" : "USDT-BEP20"}</span>
               <span className="font-extrabold text-[16px] tracking-tight mt-0.5">
                 {selectedAsset === "USDT-TRC20" ? usdtTrc20Balance : usdtBep20Balance}
               </span>
