@@ -3,6 +3,18 @@ import { connectToDatabase } from "@/lib/db";
 import User from "@/models/User";
 import twilio from "twilio";
 
+// Helper function to format phone number to E.164 standard required by Twilio
+function formatPhoneNumber(phone: string): string {
+  const cleaned = phone.replace(/[^\d+]/g, "");
+  if (cleaned.startsWith("+")) {
+    return cleaned;
+  }
+  if (cleaned.length === 10) {
+    return `+91${cleaned}`;
+  }
+  return `+${cleaned}`;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await req.json();
@@ -34,20 +46,16 @@ export async function POST(req: NextRequest) {
     if (accountSid && authToken && twilioPhone) {
       try {
         const client = twilio(accountSid, authToken);
-        // Format to E.164 if missing + (simple check)
-        let phone = user.mobileNumber;
-        if (!phone.startsWith("+")) {
-            phone = "+" + phone;
-        }
+        const formattedPhone = formatPhoneNumber(user.mobileNumber);
 
         await client.messages.create({
           body: `Your Index Exchange verification code is: ${otpCode}. It expires in 10 minutes.`,
           from: twilioPhone,
-          to: phone,
+          to: formattedPhone,
         });
       } catch (err: any) {
         console.error("Twilio SMS Error in Transfer OTP:", err);
-        return NextResponse.json({ success: false, message: "Failed to send OTP SMS. Please check Twilio credentials." }, { status: 500 });
+        return NextResponse.json({ success: false, message: "Failed to send OTP SMS. Please try again later." }, { status: 500 });
       }
     } else {
       console.warn("Twilio credentials not configured. OTP generated but not sent via SMS.");
