@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Poppins } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
@@ -10,11 +10,25 @@ const poppins = Poppins({
   display: "swap",
 });
 
+export const viewport: Viewport = {
+  themeColor: "#0f172a",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://indxexchange.com"),
   title: "IndX → USDT selling Platform",
   description: "Log in to IndX for instant USDT-to-INR conversions at the best market rates. Fast processing, secure payouts, reliable support—exchange your crypto easily now!",
   keywords: "IndX USDT Price, IndX Crypto, IndX USDT Sell, IndX Apk, IndX Exchange, IndX USDT Exchange, IndX USDT-to-INR",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "IndX",
+  },
   verification: {
     google: "zeJGjFAnu7kVPu10k5hHLu8AP-BvJPZ7Y6L8wY7cZ7Q",
   },
