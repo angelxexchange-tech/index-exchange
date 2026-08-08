@@ -20,7 +20,7 @@ export default function DashboardPage() {
 
   const [walletInfo, setWalletInfo] = useState<{
     inrBalance: number;
-    usdtBalance: number;
+    usdtTrc20Balance: number;
     usdtBep20Balance: number;
     levelIncome: number;
     ltdIncome: number;
@@ -186,14 +186,14 @@ export default function DashboardPage() {
                 width={48}
                 height={48}
                 priority
-                className="w-12 h-12 object-contain shrink-0"
+                className="w-12 h-12 object-contain shrink-0 scale-[1.35]"
               />
               <div className="flex flex-col">
                 <span className="text-black font-semibold text-[16px] tracking-tight">
                   USDT-TRC20
                 </span>
                 <span className="text-[#F5B301] font-bold text-sm mt-0.5">
-                  {walletInfo?.usdtBalance ?? 0}
+                  {walletInfo?.usdtTrc20Balance ?? 0}
                 </span>
               </div>
             </div>
@@ -225,7 +225,7 @@ export default function DashboardPage() {
                 alt="USDT-BEP20 Logo"
                 width={48}
                 height={48}
-                className="w-12 h-12 object-contain shrink-0"
+                className="w-12 h-12 object-contain shrink-0 scale-[1.35]"
               />
               <div className="flex flex-col">
                 <span className="text-black font-semibold text-[16px] tracking-tight">

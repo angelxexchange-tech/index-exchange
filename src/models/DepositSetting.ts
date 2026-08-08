@@ -13,7 +13,7 @@ const DepositSettingSchema = new Schema<IDepositSetting>(
   {
     asset: {
       type: String,
-      default: "USDT",
+      default: "USDT-TRC20",
     },
     network: {
       type: String,

@@ -90,7 +90,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
   const [qrPreview, setQrPreview] = useState("");
   const [savingDepositSettings, setSavingDepositSettings] = useState(false);
   const [depositSettingsAlert, setDepositSettingsAlert] = useState<{ type: "success" | "error"; msg: string } | null>(null);
-  const [depositAssetType, setDepositAssetType] = useState<"USDT" | "USDT-BEP20">("USDT");
+  const [depositAssetType, setDepositAssetType] = useState<"USDT-TRC20" | "USDT-BEP20">("USDT-TRC20");
 
   // Admin Credentials Settings state
   const [settingsCurrentPass, setSettingsCurrentPass] = useState("");
@@ -111,7 +111,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
   const [balanceModalOpen, setBalanceModalOpen] = useState(false);
   const [selectedUserForBalance, setSelectedUserForBalance] = useState<any>(null);
   const [balanceAction, setBalanceAction] = useState<"credit" | "debit">("credit");
-  const [balanceAsset, setBalanceAsset] = useState<"INR" | "USDT" | "USDT-BEP20">("INR");
+  const [balanceAsset, setBalanceAsset] = useState<"INR" | "USDT-TRC20" | "USDT-BEP20">("INR");
   const [balanceAmount, setBalanceAmount] = useState<string>("");
   const [balanceSubmitting, setBalanceSubmitting] = useState(false);
   const [balanceAlert, setBalanceAlert] = useState<{ type: "success" | "error"; msg: string } | null>(null);
@@ -1234,10 +1234,10 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                   <label className="text-xs font-semibold text-slate-300">Select Asset to Update</label>
                   <select
                     value={depositAssetType}
-                    onChange={(e) => setDepositAssetType(e.target.value as "USDT" | "USDT-BEP20")}
+                    onChange={(e) => setDepositAssetType(e.target.value as "USDT-TRC20" | "USDT-BEP20")}
                     className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-4 text-xs text-white font-bold outline-none focus:border-[#31A9F6]"
                   >
-                    <option value="USDT">USDT (TRC20)</option>
+                    <option value="USDT-TRC20">USDT (TRC20)</option>
                     <option value="USDT-BEP20">USDT (BEP20)</option>
                   </select>
                 </div>
@@ -1488,7 +1488,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                             <td className="px-4 py-3 text-xs">
                               <div className="flex flex-col">
                                 <span className="font-bold text-slate-200">₹{(u.wallet?.inrBalance || 0).toLocaleString()}</span>
-                                <span className="text-[10px] text-emerald-400 font-mono">${(u.wallet?.usdtBalance || 0).toLocaleString()}</span>
+                                <span className="text-[10px] text-emerald-400 font-mono">${(u.wallet?.usdtTrc20Balance || 0).toLocaleString()}</span>
                               </div>
                             </td>
                             <td className="px-4 py-3 text-xs text-slate-400">
@@ -1721,7 +1721,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                     </div>
                     <div className="flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-800/80">
                       <span className="text-xs text-slate-400 font-bold uppercase">USDT Balance</span>
-                      <span className="font-extrabold text-emerald-400 text-lg">${(selectedUserDetails.wallet?.usdtBalance || 0).toLocaleString()}</span>
+                      <span className="font-extrabold text-emerald-400 text-lg">${(selectedUserDetails.wallet?.usdtTrc20Balance || 0).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-800/80">
                       <span className="text-xs text-slate-400 font-bold uppercase">USDT-BEP20 Balance</span>
@@ -1996,7 +1996,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                   className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-3 text-xs text-white outline-none focus:border-[#31A9F6]"
                 >
                   <option value="INR">INR (₹)</option>
-                  <option value="USDT">USDT ($)</option>
+                  <option value="USDT-TRC20">USDT-TRC20 ($)</option>
                   <option value="USDT-BEP20">USDT-BEP20 ($)</option>
                   
                   

@@ -9,7 +9,7 @@ export default function DepositPage() {
   const { isAuthenticated, userId, isMounted, clearAuthAndRedirect } = useAuthGuard();
   const [copied, setCopied] = useState(false);
 
-  const [usdtBalance, setUsdtBalance] = useState(0);
+  const [usdtTrc20Balance, setUsdtBalance] = useState(0);
   const [usdtBep20Balance, setUsdtBep20Balance] = useState(0);
 
   // Dynamic deposit details from Admin MongoDB API
@@ -24,7 +24,7 @@ export default function DepositPage() {
   const [txnId, setTxnId] = useState("");
   const [submittingDeposit, setSubmittingDeposit] = useState(false);
   const [depositAlert, setDepositAlert] = useState<{ type: "success" | "error"; message: string } | null>(null);
-  const [selectedAsset, setSelectedAsset] = useState<"USDT" | "USDT-BEP20">("USDT");
+  const [selectedAsset, setSelectedAsset] = useState<"USDT-TRC20" | "USDT-BEP20">("USDT-TRC20");
 
   const loadData = () => {
     if (!isAuthenticated || !userId) return;
@@ -41,13 +41,13 @@ export default function DepositPage() {
       .then((data) => {
         if (!data) return;
         if (data.success && data.wallet) {
-          setUsdtBalance(data.wallet.usdtBalance ?? 0);
+          setUsdtBalance(data.wallet.usdtTrc20Balance ?? 0);
           setUsdtBep20Balance(data.wallet.usdtBep20Balance ?? 0);
         }
       })
       .catch((err) => console.error("Fetch profile error:", err));
 
-    let currentAsset = "USDT";
+    let currentAsset = "USDT-TRC20";
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get("asset") === "USDT-BEP20") {
@@ -81,7 +81,7 @@ export default function DepositPage() {
       if (asset === "USDT-BEP20") {
         setSelectedAsset("USDT-BEP20");
       } else {
-        setSelectedAsset("USDT");
+        setSelectedAsset("USDT-TRC20");
       }
     }
   }, [isAuthenticated, userId]);
@@ -157,7 +157,7 @@ export default function DepositPage() {
             <ArrowLeft className="w-6 h-6 stroke-[2.5]" />
           </Link>
           <h1 className="text-[#1C82D9] text-[22px] tracking-tight font-bold">
-            Deposit {selectedAsset === "USDT" ? "USDT-TRC20" : selectedAsset}
+            Deposit {selectedAsset === "USDT-TRC20" ? "USDT-TRC20" : selectedAsset}
           </h1>
         </header>
 
@@ -182,7 +182,7 @@ export default function DepositPage() {
           )}
 
           <p className="text-black font-extrabold text-[13.5px] tracking-tight text-center">
-            Send only {selectedAsset === "USDT" ? "USDT (TRC20)" : "USDT (BEP20)"} to this deposit address
+            Send only {selectedAsset === "USDT-TRC20" ? "USDT (TRC20)" : "USDT (BEP20)"} to this deposit address
           </p>
         </div>
 
@@ -267,7 +267,7 @@ export default function DepositPage() {
                 required
                 value={txnId}
                 onChange={(e) => setTxnId(e.target.value)}
-                placeholder={`Enter ${selectedAsset === "USDT" ? "TRC20" : "BEP20"} Transaction Hash / TXID`}
+                placeholder={`Enter ${selectedAsset === "USDT-TRC20" ? "TRC20" : "BEP20"} Transaction Hash / TXID`}
                 className="w-full bg-transparent font-medium text-slate-800 placeholder:text-[#A0A8B6] outline-none text-[13.5px]"
               />
             </div>
@@ -317,9 +317,9 @@ export default function DepositPage() {
           {/* Dynamic Asset Box */}
           <div className="flex items-center space-x-3">
             <div className="flex-1 bg-[#1C82D9] rounded-[14px] py-3 px-2 flex flex-col items-center justify-center text-center text-white min-h-[78px] shadow-md border border-[#1875CD]">
-              <span className="font-bold text-[13px] tracking-wider">{selectedAsset === "USDT" ? "USDT (TRC20)" : "USDT (BEP20)"}</span>
+              <span className="font-bold text-[13px] tracking-wider">{selectedAsset === "USDT-TRC20" ? "USDT (TRC20)" : "USDT (BEP20)"}</span>
               <span className="font-extrabold text-[16px] tracking-tight mt-0.5">
-                {selectedAsset === "USDT" ? usdtBalance : usdtBep20Balance}
+                {selectedAsset === "USDT-TRC20" ? usdtTrc20Balance : usdtBep20Balance}
               </span>
             </div>
           </div>

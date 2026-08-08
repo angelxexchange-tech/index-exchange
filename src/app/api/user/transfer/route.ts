@@ -7,7 +7,7 @@ import Transaction from "@/models/Transaction";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { userId, destination, asset = "USDT", amount } = body;
+    const { userId, destination, asset = "USDT-TRC20", amount } = body;
 
     const numAmount = Number(amount);
 
@@ -37,9 +37,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Determine target balance field based on asset
-    let balanceKey: "usdtBalance" | "usdtBep20Balance" = "usdtBalance";
+    let balanceKey: "usdtTrc20Balance" | "usdtBep20Balance" = "usdtTrc20Balance";
     if (asset === "USDT-BEP20") balanceKey = "usdtBep20Balance";
-    else balanceKey = "usdtBalance";
+    else balanceKey = "usdtTrc20Balance";
 
     const currentSenderBalance = senderWallet[balanceKey] || 0;
 

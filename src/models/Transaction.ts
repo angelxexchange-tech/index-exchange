@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
-export type TransactionAsset = "INR" | "USDT" | "USDT-BEP20";
+export type TransactionAsset = "INR" | "USDT-TRC20" | "USDT-BEP20";
 
 export interface ITransaction extends Document {
   userId: string;
@@ -27,7 +27,7 @@ const TransactionSchema = new Schema<ITransaction>(
     },
     asset: {
       type: String,
-      enum: ["INR", "USDT", "USDT-BEP20"],
+      enum: ["INR", "USDT-TRC20", "USDT-BEP20"],
       required: true,
     },
     amount: {

@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { depositAddress, qrImageData, network, explorerUrl, asset } = body;
-    const targetAsset = asset === "USDT-BEP20" ? "USDT-BEP20" : "USDT";
+    const targetAsset = asset === "USDT-BEP20" ? "USDT-BEP20" : "USDT-TRC20";
 
     if (!depositAddress || typeof depositAddress !== "string" || depositAddress.trim() === "") {
       return NextResponse.json(

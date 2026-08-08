@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
 
     // Determine target balance field
     const fieldMap: Record<string, keyof typeof wallet> = {
-      USDT: "usdtBalance",
+      "USDT-TRC20": "usdtTrc20Balance",
       "USDT-BEP20": "usdtBep20Balance",
     };
 
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
       message: `Successfully sold ${amount} ${asset} for ₹${expectedINR.toFixed(2)} at rate ₹${currentRate}/${asset}.`,
       wallet: {
         inrBalance: wallet.inrBalance,
-        usdtBalance: wallet.usdtBalance,
+        usdtTrc20Balance: wallet.usdtTrc20Balance,
         usdtBep20Balance: wallet.usdtBep20Balance,
       },
       transaction: {
