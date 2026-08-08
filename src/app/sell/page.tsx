@@ -418,7 +418,7 @@ export default function SellPage() {
                         USDT-TRC20
                       </span>
                       <span className="text-slate-600 font-medium text-[11.5px]">
-                        Rate: {typeof rates.USDT === "number" ? `₹${rates.USDT}` : "Not configured"} / USDT | Bal: {walletInfo?.usdtTrc20Balance ?? 0}
+                        Rate: {typeof rates.USDT === "number" ? `₹${rates.USDT}` : "Not configured"} • USDT-TRC20 • Balance: {walletInfo?.usdtTrc20Balance ?? 0}
                       </span>
                     </div>
                   </div>
@@ -451,7 +451,7 @@ export default function SellPage() {
                         USDT-BEP20
                       </span>
                       <span className="text-slate-600 font-medium text-[11.5px]">
-                        Rate: {typeof rates["USDT-BEP20"] === "number" ? `₹${rates["USDT-BEP20"]}` : "Not configured"} / USDT-BEP20 | Bal: {walletInfo?.usdtBep20Balance ?? 0}
+                        Rate: {typeof rates["USDT-BEP20"] === "number" ? `₹${rates["USDT-BEP20"]}` : "Not configured"} • USDT-BEP20 • Balance: {walletInfo?.usdtBep20Balance ?? 0}
                       </span>
                     </div>
                   </div>
