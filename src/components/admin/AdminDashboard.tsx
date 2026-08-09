@@ -44,7 +44,7 @@ interface AdminDashboardProps {
 export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardProps) {
   // Navigation tab state
   const [activeTab, setActiveTab] = useState<
-    "overview" | "users" | "deposits" | "withdrawals" | "transactions" | "wallets" | "rates" | "limits" | "depositSettings" | "settings" | "userDetails"
+    "overview" | "users" | "deposits" | "withdrawals" | "transfers" | "transactions" | "wallets" | "rates" | "limits" | "depositSettings" | "settings" | "userDetails"
   >("overview");
 
   // Load last active tab from localStorage on mount
@@ -474,7 +474,10 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
       return matchesSearch && t.type === "deposit";
     }
     if (activeTab === "withdrawals") {
-      return matchesSearch && (t.type === "withdrawal" || t.type === "transfer");
+      return matchesSearch && t.type === "withdrawal";
+    }
+    if (activeTab === "transfers") {
+      return matchesSearch && t.type === "transfer";
     }
     if (txnFilter !== "all") {
       return matchesSearch && t.status === txnFilter;
@@ -484,7 +487,8 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
 
   // Pending deposits & withdrawals count
   const pendingDeposits = transactions.filter((t) => t.type === "deposit" && t.status === "pending");
-  const pendingWithdrawals = transactions.filter((t) => (t.type === "withdrawal" || t.type === "transfer") && t.status === "pending");
+  const pendingWithdrawals = transactions.filter((t) => t.type === "withdrawal" && t.status === "pending");
+  const pendingTransfers = transactions.filter((t) => t.type === "transfer" && t.status === "pending");
 
   return (
     <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col font-sans select-none overflow-x-hidden">
@@ -662,6 +666,26 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
             {pendingWithdrawals.length > 0 && (
               <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold animate-pulse">
                 {pendingWithdrawals.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("transfers")}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
+              activeTab === "transfers"
+                ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <ArrowUpCircle className="w-4 h-4 text-blue-400" />
+              <span>Transfers (USDT)</span>
+            </div>
+            {pendingTransfers.length > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold animate-pulse">
+                {pendingTransfers.length}
               </span>
             )}
           </button>
@@ -1659,6 +1683,86 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
              </div>
           )}
 
+          {/* TRANSFERS TAB */}
+          {activeTab === "transfers" && (
+             <div className="space-y-6 animate-in fade-in duration-300">
+               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                 <div>
+                   <h2 className="text-base sm:text-lg font-bold text-white flex items-center space-x-2">
+                     <ArrowUpCircle className="w-5 h-5 text-blue-400" />
+                     <span>USDT Transfers & Approvals</span>
+                   </h2>
+                   <p className="text-xs text-slate-400">Review and approve user USDT transfer requests.</p>
+                 </div>
+               </div>
+               <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-md">
+                 <div className="overflow-x-auto">
+                   <table className="w-full text-left text-sm text-slate-300">
+                     <thead className="bg-slate-950/50 text-xs uppercase font-semibold text-slate-500 border-b border-slate-800">
+                       <tr>
+                         <th className="px-4 py-3">User & Ref</th>
+                         <th className="px-4 py-3">Asset</th>
+                         <th className="px-4 py-3">Amount</th>
+                         <th className="px-4 py-3">Address</th>
+                         <th className="px-4 py-3">Status</th>
+                         <th className="px-4 py-3">Action</th>
+                       </tr>
+                     </thead>
+                     <tbody className="divide-y divide-slate-800">
+                       {filteredTransactions.length === 0 ? (
+                         <tr>
+                           <td colSpan={6} className="px-4 py-8 text-center text-slate-500 text-xs">No transfers found.</td>
+                         </tr>
+                       ) : (
+                         filteredTransactions.map((t) => (
+                           <tr key={t._id} className="hover:bg-slate-800/40 transition-colors">
+                             <td className="px-4 py-3">
+                               <div className="font-bold text-[#31A9F6] text-xs">{t.userId}</div>
+                               <div className="font-mono text-[10px] text-slate-500">{t.referenceId}</div>
+                             </td>
+                             <td className="px-4 py-3 font-bold uppercase text-xs">{t.asset}</td>
+                             <td className="px-4 py-3 font-extrabold text-emerald-400 text-xs">{t.amount}</td>
+                             <td className="px-4 py-3">
+                               <div className="font-mono text-[10px] bg-slate-950/50 p-1.5 rounded border border-slate-800 text-slate-400 break-all max-w-[150px]">
+                                 {t.address || "N/A"}
+                               </div>
+                             </td>
+                             <td className="px-4 py-3">
+                               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                 t.status === "pending" ? "bg-amber-500/10 text-amber-400 border border-amber-500/30" :
+                                 t.status === "completed" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" :
+                                 "bg-rose-500/10 text-rose-400 border border-rose-500/30"
+                               }`}>
+                                 {t.status.toUpperCase()}
+                               </span>
+                             </td>
+                             <td className="px-4 py-3">
+                               <div className="flex items-center space-x-2">
+                                 <button onClick={() => { setSelectedTxn(t); setViewModalOpen(true); }} className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors" title="View Details">
+                                   <Eye className="w-4 h-4" />
+                                 </button>
+                                 {t.status === "pending" && (
+                                   <>
+                                      <button onClick={() => { setSelectedTxn(t); setTxnActionType("approve"); setActionModalOpen(true); }} className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30 transition-colors" title="Approve">
+                                       <CheckCircle className="w-4 h-4" />
+                                      </button>
+                                      <button onClick={() => { setSelectedTxn(t); setTxnActionType("reject"); setActionModalOpen(true); }} className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 transition-colors" title="Reject">
+                                       <XCircle className="w-4 h-4" />
+                                      </button>
+                                   </>
+                                 )}
+                               </div>
+                             </td>
+                           </tr>
+                         ))
+                       )}
+                     </tbody>
+                   </table>
+                 </div>
+               </div>
+             </div>
+          )}
+
 {/* USER FULL DETAILS PAGE */}
           {activeTab === "userDetails" && selectedUserDetails && (
             <div className="space-y-6 animate-in fade-in duration-300">
@@ -2081,6 +2185,12 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                 <span className="text-slate-400">Reference:</span>
                 <span className="font-mono text-slate-300 truncate max-w-[150px]">{selectedTxn.referenceId}</span>
               </div>
+              {(selectedTxn.type === "withdrawal" || selectedTxn.type === "transfer") && selectedTxn.address && (
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Destination:</span>
+                  <span className="font-mono text-slate-300 truncate max-w-[150px]">{selectedTxn.address}</span>
+                </div>
+              )}
             </div>
 
             {actionAlert && (
@@ -2176,10 +2286,10 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                   </span>
                 </span>
               </div>
-              {(selectedTxn.type === "withdrawal" || selectedTxn.type === "deposit") && selectedTxn.address && (
+              {(selectedTxn.type === "withdrawal" || selectedTxn.type === "deposit" || selectedTxn.type === "transfer") && selectedTxn.address && (
                 <div className="flex flex-col pt-2 border-t border-slate-800">
                   <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                    {selectedTxn.type === "withdrawal" ? "Destination Address / Bank Details" : "User Submitted TxID / UTR Ref."}
+                    {(selectedTxn.type === "withdrawal" || selectedTxn.type === "transfer") ? "Destination Address / Bank Details" : "User Submitted TxID / UTR Ref."}
                   </span>
                   <div className="mt-1 p-3 bg-slate-900 border border-slate-800 rounded-lg text-slate-300 font-mono text-xs break-all relative group">
                     {selectedTxn.address}
