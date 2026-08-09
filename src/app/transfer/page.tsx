@@ -317,10 +317,10 @@ export default function TransferPage() {
             ) : (
               <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
             )}
-            <div className="flex-1">
-              <div>{statusAlert.message}</div>
+            <div className="flex-1 min-w-0">
+              <div className="break-words">{statusAlert.message}</div>
               {statusAlert.referenceId && (
-                <div className="mt-1 font-mono text-[11px] opacity-85">
+                <div className="mt-1 font-mono text-[11px] opacity-85 break-words">
                   Ref ID: {statusAlert.referenceId}
                 </div>
               )}
