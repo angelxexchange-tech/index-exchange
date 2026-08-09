@@ -1744,7 +1744,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                                  {t.status === "pending" && (
                                    <>
                                       <button onClick={() => { setSelectedTxn(t); setTxnActionType("approve"); setActionModalOpen(true); }} className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30 transition-colors" title="Approve">
-                                       <CheckCircle className="w-4 h-4" />
+                                       <CheckCircle2 className="w-4 h-4" />
                                       </button>
                                       <button onClick={() => { setSelectedTxn(t); setTxnActionType("reject"); setActionModalOpen(true); }} className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 transition-colors" title="Reject">
                                        <XCircle className="w-4 h-4" />
