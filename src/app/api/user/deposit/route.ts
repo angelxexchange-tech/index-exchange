@@ -44,6 +44,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (user.isBlocked) {
+      return NextResponse.json(
+        {
+          success: false,
+          blocked: true,
+          message: "Your account has been blocked. Please contact support.",
+        },
+        { status: 403 }
+      );
+    }
+
     // Check if duplicate transaction ID was submitted
     const existingTx = await Transaction.findOne({ address: cleanTxId, type: "deposit" });
     if (existingTx) {

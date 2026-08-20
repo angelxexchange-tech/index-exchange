@@ -34,6 +34,9 @@ export async function GET() {
         mobileNumber: u.mobileNumber,
         email: u.email || "",
         referralId: u.referralId || "",
+        isBlocked: !!u.isBlocked,
+        blockedAt: u.blockedAt || null,
+        blockReason: u.blockReason || "",
         createdAt: u.createdAt,
         wallet: {
           inrBalance: userWallet.inrBalance || 0,

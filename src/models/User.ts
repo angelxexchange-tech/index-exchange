@@ -9,6 +9,9 @@ export interface IUser extends Document {
   referralId?: string;
   otpCode?: string;
   otpExpiry?: Date;
+  isBlocked: boolean;
+  blockedAt?: Date | null;
+  blockReason?: string;
   createdAt: Date;
 }
 
@@ -52,6 +55,20 @@ const UserSchema = new Schema<IUser>(
     },
     otpExpiry: {
       type: Date,
+    },
+    isBlocked: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    blockedAt: {
+      type: Date,
+      default: null,
+    },
+    blockReason: {
+      type: String,
+      default: "",
+      trim: true,
     },
     createdAt: {
       type: Date,

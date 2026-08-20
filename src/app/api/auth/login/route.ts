@@ -38,6 +38,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (user.isBlocked) {
+      return NextResponse.json(
+        {
+          success: false,
+          blocked: true,
+          message: "Your account has been blocked. Please contact support.",
+        },
+        { status: 403 }
+      );
+    }
+
     // Verify password
     if (user.password !== cleanPassword) {
       return NextResponse.json(
