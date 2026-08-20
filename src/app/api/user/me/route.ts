@@ -25,6 +25,17 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    if (user.isBlocked) {
+      return NextResponse.json(
+        {
+          success: false,
+          blocked: true,
+          message: "Your account has been blocked. Please contact support.",
+        },
+        { status: 403 }
+      );
+    }
+
     let wallet = await Wallet.findOne({ userId: user.userId });
 
     // Auto-create wallet if missing

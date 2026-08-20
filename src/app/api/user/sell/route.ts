@@ -28,6 +28,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (user.isBlocked) {
+      return NextResponse.json(
+        {
+          success: false,
+          blocked: true,
+          message: "Your account has been blocked. Please contact support.",
+        },
+        { status: 403 }
+      );
+    }
+
     // Fetch exchange rate strictly from Database set by Admin
     const rateDoc = await Rate.findOne({ asset: asset.toUpperCase() });
     if (!rateDoc || typeof rateDoc.rate !== "number" || rateDoc.rate <= 0) {

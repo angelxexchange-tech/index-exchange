@@ -34,6 +34,9 @@ import {
   EyeOff,
   Lock,
   UserCheck,
+  Ban,
+  Trash2,
+  ShieldCheck,
 } from "lucide-react";
 
 interface AdminDashboardProps {
@@ -125,6 +128,15 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [userDetailsModalOpen, setUserDetailsModalOpen] = useState(false);
   const [selectedUserDetails, setSelectedUserDetails] = useState<any>(null);
+
+  // Block / Unblock & Delete user state
+  const [userActionModalOpen, setUserActionModalOpen] = useState(false);
+  const [userActionType, setUserActionType] = useState<"block" | "unblock" | "delete">("block");
+  const [selectedUserForAction, setSelectedUserForAction] = useState<any>(null);
+  const [blockReason, setBlockReason] = useState("");
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [userActionSubmitting, setUserActionSubmitting] = useState(false);
+  const [userActionAlert, setUserActionAlert] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
   // Fetch all dashboard data
   const fetchData = async (isManualRefresh = false) => {
@@ -452,6 +464,78 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
       setActionAlert({ type: "error", msg: "Network error processing transaction action." });
     } finally {
       setTxnSubmitting(false);
+    }
+  };
+
+  // Open the block / unblock / delete confirmation modal for a user
+  const openUserActionModal = (user: any, type: "block" | "unblock" | "delete") => {
+    setSelectedUserForAction(user);
+    setUserActionType(type);
+    setBlockReason(user?.blockReason || "");
+    setDeleteConfirmText("");
+    setUserActionAlert(null);
+    setUserActionModalOpen(true);
+  };
+
+  // Handle Block / Unblock / Delete submit
+  const handleUserActionSubmit = async () => {
+    if (!selectedUserForAction) return;
+
+    if (userActionType === "delete" && deleteConfirmText.trim() !== selectedUserForAction.userId) {
+      setUserActionAlert({ type: "error", msg: `Please type ${selectedUserForAction.userId} exactly to confirm deletion.` });
+      return;
+    }
+
+    setUserActionAlert(null);
+    setUserActionSubmitting(true);
+
+    try {
+      const isDelete = userActionType === "delete";
+      const res = await fetch(isDelete ? "/api/admin/users/delete" : "/api/admin/users/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          isDelete
+            ? { userId: selectedUserForAction.userId }
+            : {
+                userId: selectedUserForAction.userId,
+                blocked: userActionType === "block",
+                reason: blockReason.trim(),
+              }
+        ),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setUserActionAlert({ type: "error", msg: data.message || "Failed to complete the action." });
+      } else {
+        setUserActionAlert({ type: "success", msg: data.message });
+
+        // Leave the details page if the user we were viewing was deleted
+        if (isDelete && selectedUserDetails?.userId === selectedUserForAction.userId) {
+          setSelectedUserDetails(null);
+          setActiveTab("users");
+        } else if (!isDelete && selectedUserDetails?.userId === selectedUserForAction.userId) {
+          setSelectedUserDetails({
+            ...selectedUserDetails,
+            isBlocked: userActionType === "block",
+            blockReason: userActionType === "block" ? blockReason.trim() : "",
+          });
+        }
+
+        setTimeout(() => {
+          setUserActionModalOpen(false);
+          setUserActionAlert(null);
+          setSelectedUserForAction(null);
+          setDeleteConfirmText("");
+          fetchData();
+        }, 1200);
+      }
+    } catch (err) {
+      setUserActionAlert({ type: "error", msg: "Network error while updating the user." });
+    } finally {
+      setUserActionSubmitting(false);
     }
   };
 
@@ -1485,14 +1569,15 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                         <th className="px-4 py-3">User</th>
                         <th className="px-4 py-3">Contact</th>
                         <th className="px-4 py-3">Balances</th>
+                        <th className="px-4 py-3">Status</th>
                         <th className="px-4 py-3">Joined</th>
-                        <th className="px-4 py-3 text-right">Action</th>
+                        <th className="px-4 py-3 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800">
                       {filteredUsers.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="px-4 py-8 text-center text-slate-500 text-xs">No users found.</td>
+                          <td colSpan={6} className="px-4 py-8 text-center text-slate-500 text-xs">No users found.</td>
                         </tr>
                       ) : (
                         filteredUsers.map((u) => (
@@ -1515,13 +1600,40 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                                 <span className="text-[10px] text-emerald-400 font-mono">${(u.wallet?.usdtTrc20Balance || 0).toLocaleString()}</span>
                               </div>
                             </td>
+                            <td className="px-4 py-3">
+                              {u.isBlocked ? (
+                                <span className="inline-flex items-center space-x-1 px-2 py-1 rounded-md bg-rose-950 border border-rose-800 text-rose-300 text-[10px] font-bold uppercase">
+                                  <Ban className="w-3 h-3" />
+                                  <span>Blocked</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center space-x-1 px-2 py-1 rounded-md bg-emerald-950 border border-emerald-800 text-emerald-300 text-[10px] font-bold uppercase">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  <span>Active</span>
+                                </span>
+                              )}
+                            </td>
                             <td className="px-4 py-3 text-xs text-slate-400">
                               {new Date(u.createdAt).toLocaleDateString()}
                             </td>
-                            <td className="px-4 py-3 text-right">
-                              <button onClick={() => { setSelectedUserDetails(u); setActiveTab("userDetails" as any); }} className="p-1.5 rounded-lg bg-[#31A9F6]/10 text-[#31A9F6] hover:bg-[#31A9F6]/20 border border-[#31A9F6]/30 transition-colors inline-flex" title="View Full Details">
-                                <Eye className="w-4 h-4" />
-                              </button>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center justify-end space-x-1.5">
+                                <button onClick={() => { setSelectedUserDetails(u); setActiveTab("userDetails" as any); }} className="p-1.5 rounded-lg bg-[#31A9F6]/10 text-[#31A9F6] hover:bg-[#31A9F6]/20 border border-[#31A9F6]/30 transition-colors inline-flex cursor-pointer" title="View Full Details">
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                {u.isBlocked ? (
+                                  <button onClick={() => openUserActionModal(u, "unblock")} className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30 transition-colors inline-flex cursor-pointer" title="Unblock User">
+                                    <ShieldCheck className="w-4 h-4" />
+                                  </button>
+                                ) : (
+                                  <button onClick={() => openUserActionModal(u, "block")} className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 transition-colors inline-flex cursor-pointer" title="Block User">
+                                    <Ban className="w-4 h-4" />
+                                  </button>
+                                )}
+                                <button onClick={() => openUserActionModal(u, "delete")} className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 transition-colors inline-flex cursor-pointer" title="Delete User">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -1766,7 +1878,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
 {/* USER FULL DETAILS PAGE */}
           {activeTab === "userDetails" && selectedUserDetails && (
             <div className="space-y-6 animate-in fade-in duration-300">
-              <div className="flex items-center space-x-4 mb-2">
+              <div className="flex flex-wrap items-center gap-4 mb-2">
                 <button
                   type="button"
                   onClick={() => setActiveTab("users")}
@@ -1774,12 +1886,48 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
                 </button>
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center space-x-2">
+                <div className="flex-1">
+                  <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center flex-wrap gap-2">
                     <UserCheck className="w-6 h-6 text-[#31A9F6]" />
                     <span>User Details: {selectedUserDetails.name}</span>
+                    {selectedUserDetails.isBlocked && (
+                      <span className="inline-flex items-center space-x-1 px-2 py-1 rounded-md bg-rose-950 border border-rose-800 text-rose-300 text-[10px] font-bold uppercase">
+                        <Ban className="w-3 h-3" />
+                        <span>Blocked</span>
+                      </span>
+                    )}
                   </h2>
                   <p className="text-xs text-slate-400">Comprehensive view of user profile, wallets, and transaction history.</p>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  {selectedUserDetails.isBlocked ? (
+                    <button
+                      type="button"
+                      onClick={() => openUserActionModal(selectedUserDetails, "unblock")}
+                      className="inline-flex items-center space-x-2 px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30 text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                      <span className="hidden sm:inline">Unblock</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => openUserActionModal(selectedUserDetails, "block")}
+                      className="inline-flex items-center space-x-2 px-3 py-2 rounded-xl bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      <Ban className="w-4 h-4" />
+                      <span className="hidden sm:inline">Block</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => openUserActionModal(selectedUserDetails, "delete")}
+                    className="inline-flex items-center space-x-2 px-3 py-2 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span className="hidden sm:inline">Delete</span>
+                  </button>
                 </div>
               </div>
 
@@ -2142,6 +2290,162 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                 {balanceSubmitting ? "Updating Wallet..." : "Confirm Balance Adjustment"}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* BLOCK / UNBLOCK / DELETE USER CONFIRMATION MODAL */}
+      {userActionModalOpen && selectedUserForAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            onClick={() => setUserActionModalOpen(false)}
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+          />
+
+          <div className="relative w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl z-10 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-white flex items-center space-x-2">
+                {userActionType === "delete" ? (
+                  <Trash2 className="w-5 h-5 text-rose-400" />
+                ) : userActionType === "block" ? (
+                  <Ban className="w-5 h-5 text-amber-400" />
+                ) : (
+                  <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                )}
+                <span>
+                  {userActionType === "delete"
+                    ? "Delete User"
+                    : userActionType === "block"
+                    ? "Block User"
+                    : "Unblock User"}
+                </span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setUserActionModalOpen(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-3.5 space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Name:</span>
+                <span className="font-bold text-white">{selectedUserForAction.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">User ID:</span>
+                <span className="font-bold text-[#31A9F6] font-mono">{selectedUserForAction.userId}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Mobile:</span>
+                <span className="font-bold text-slate-200">{selectedUserForAction.mobileNumber}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">INR Balance:</span>
+                <span className="font-extrabold text-emerald-400">
+                  ₹{(selectedUserForAction.wallet?.inrBalance || 0).toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            {userActionType === "block" && (
+              <>
+                <div className="p-3 rounded-xl bg-amber-950/50 border border-amber-800 text-amber-300 text-[11px] leading-relaxed">
+                  <AlertTriangle className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />
+                  A blocked user cannot log in, and every deposit, sell, withdrawal, and transfer request is rejected. Their balances and history stay intact.
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-300">Reason (optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Suspicious activity"
+                    value={blockReason}
+                    onChange={(e) => setBlockReason(e.target.value)}
+                    className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-3 text-sm text-white placeholder-slate-500 outline-none focus:border-[#31A9F6]"
+                  />
+                </div>
+              </>
+            )}
+
+            {userActionType === "unblock" && (
+              <div className="p-3 rounded-xl bg-emerald-950/50 border border-emerald-800 text-emerald-300 text-[11px] leading-relaxed">
+                This user will be able to log in and trade again immediately.
+                {selectedUserForAction.blockReason ? (
+                  <span className="block mt-1 text-emerald-400/80">
+                    Blocked for: {selectedUserForAction.blockReason}
+                  </span>
+                ) : null}
+              </div>
+            )}
+
+            {userActionType === "delete" && (
+              <>
+                <div className="p-3 rounded-xl bg-rose-950/50 border border-rose-800 text-rose-300 text-[11px] leading-relaxed">
+                  <AlertTriangle className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />
+                  This permanently deletes the user along with their wallet, bank accounts, transactions, and income logs. This cannot be undone — block the user instead if you only want to suspend access.
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-300">
+                    Type <span className="font-mono text-rose-400">{selectedUserForAction.userId}</span> to confirm
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={selectedUserForAction.userId}
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-3 text-sm text-white placeholder-slate-600 font-mono outline-none focus:border-rose-500"
+                  />
+                </div>
+              </>
+            )}
+
+            {userActionAlert && (
+              <div
+                className={`p-3 rounded-xl text-xs font-medium text-center ${
+                  userActionAlert.type === "success"
+                    ? "bg-emerald-950 border border-emerald-800 text-emerald-300"
+                    : "bg-rose-950 border border-rose-800 text-rose-300"
+                }`}
+              >
+                {userActionAlert.msg}
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setUserActionModalOpen(false)}
+                disabled={userActionSubmitting}
+                className="py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm transition-all cursor-pointer disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleUserActionSubmit}
+                disabled={
+                  userActionSubmitting ||
+                  (userActionType === "delete" && deleteConfirmText.trim() !== selectedUserForAction.userId)
+                }
+                className={`py-3 rounded-xl text-white font-bold text-sm shadow-md transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                  userActionType === "delete"
+                    ? "bg-rose-600 hover:bg-rose-500"
+                    : userActionType === "block"
+                    ? "bg-amber-600 hover:bg-amber-500"
+                    : "bg-emerald-600 hover:bg-emerald-500"
+                }`}
+              >
+                {userActionSubmitting
+                  ? "Processing..."
+                  : userActionType === "delete"
+                  ? "Delete Permanently"
+                  : userActionType === "block"
+                  ? "Block User"
+                  : "Unblock User"}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -31,6 +31,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (sender.isBlocked) {
+      return NextResponse.json(
+        {
+          success: false,
+          blocked: true,
+          message: "Your account has been blocked. Please contact support.",
+        },
+        { status: 403 }
+      );
+    }
+
     if (authMethod === "OTP") {
       if (!verificationCode) {
         return NextResponse.json({ success: false, message: "OTP code is required." }, { status: 400 });
@@ -87,6 +98,13 @@ export async function POST(req: NextRequest) {
         { userId: { $regex: new RegExp(`^${cleanDestination}$`, "i") } },
       ],
     });
+
+    if (recipient && recipient.isBlocked) {
+      return NextResponse.json(
+        { success: false, message: "The recipient's account is blocked and cannot receive transfers." },
+        { status: 403 }
+      );
+    }
 
     const refId = `TR-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
 

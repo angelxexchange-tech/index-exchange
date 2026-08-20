@@ -32,7 +32,7 @@ export default function DepositPage() {
     // 1. Fetch user wallet balances
     fetch(`/api/user/me?userId=${encodeURIComponent(userId)}`)
       .then((res) => {
-        if (res.status === 401) {
+        if (res.status === 401 || res.status === 403) {
           clearAuthAndRedirect();
           return null;
         }
