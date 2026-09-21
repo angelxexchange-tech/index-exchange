@@ -14,6 +14,13 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Keep USDT-TRC20 and USDT in sync
+    if (rates["USDT-TRC20"] !== undefined && rates["USDT"] === undefined) {
+      rates["USDT"] = rates["USDT-TRC20"];
+    } else if (rates["USDT"] !== undefined && rates["USDT-TRC20"] === undefined) {
+      rates["USDT-TRC20"] = rates["USDT"];
+    }
+
     await connectToDatabase();
 
     const updatePromises = Object.entries(rates).map(async ([asset, rate]) => {

@@ -63,7 +63,7 @@ export default function SellPage() {
   }, [isAuthenticated, userId]);
 
   // Selected asset current rate strictly from API
-  const currentRate = rates[selectedCurrency];
+  const currentRate = rates[selectedCurrency] ?? (selectedCurrency === "USDT-TRC20" ? rates.USDT : undefined);
   
   const currentAvailableBalance =
     selectedCurrency === "USDT-BEP20"
@@ -418,7 +418,7 @@ export default function SellPage() {
                         USDT-TRC20
                       </span>
                       <span className="text-slate-600 font-medium text-[11.5px]">
-                        Rate: {typeof rates.USDT === "number" ? `₹${rates.USDT}` : "Not configured"} • USDT-TRC20 • Balance: {walletInfo?.usdtTrc20Balance ?? 0}
+                        Rate: {typeof (rates["USDT-TRC20"] ?? rates.USDT) === "number" ? `₹${rates["USDT-TRC20"] ?? rates.USDT}` : "Not configured"} • USDT-TRC20 • Balance: {walletInfo?.usdtTrc20Balance ?? 0}
                       </span>
                     </div>
                   </div>

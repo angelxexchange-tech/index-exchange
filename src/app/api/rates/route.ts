@@ -14,6 +14,12 @@ export async function GET() {
       rateMap[r.asset] = r.rate;
     });
 
+    if (rateMap["USDT-TRC20"] !== undefined && rateMap["USDT"] === undefined) {
+      rateMap["USDT"] = rateMap["USDT-TRC20"];
+    } else if (rateMap["USDT"] !== undefined && rateMap["USDT-TRC20"] === undefined) {
+      rateMap["USDT-TRC20"] = rateMap["USDT"];
+    }
+
     return NextResponse.json({
       success: true,
       rates: rateMap,
