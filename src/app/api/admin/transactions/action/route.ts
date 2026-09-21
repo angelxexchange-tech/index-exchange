@@ -58,7 +58,12 @@ export async function POST(req: NextRequest) {
         // Process referral commissions for approved deposit
         let depositAmountInINR = transaction.amount;
         if (transaction.asset !== "INR") {
-          const rateDoc = await Rate.findOne({ asset: transaction.asset.toUpperCase() });
+          let rateDoc = await Rate.findOne({ asset: transaction.asset.toUpperCase() });
+          if (!rateDoc && transaction.asset.toUpperCase() === "USDT-TRC20") {
+            rateDoc = await Rate.findOne({ asset: "USDT" });
+          } else if (!rateDoc && transaction.asset.toUpperCase() === "USDT") {
+            rateDoc = await Rate.findOne({ asset: "USDT-TRC20" });
+          }
           if (rateDoc && rateDoc.rate > 0) {
             depositAmountInINR = transaction.amount * rateDoc.rate;
           }

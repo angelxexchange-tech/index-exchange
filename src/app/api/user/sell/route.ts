@@ -40,7 +40,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch exchange rate strictly from Database set by Admin
-    const rateDoc = await Rate.findOne({ asset: asset.toUpperCase() });
+    let rateDoc = await Rate.findOne({ asset: asset.toUpperCase() });
+    if (!rateDoc && asset.toUpperCase() === "USDT-TRC20") {
+      rateDoc = await Rate.findOne({ asset: "USDT" });
+    } else if (!rateDoc && asset.toUpperCase() === "USDT") {
+      rateDoc = await Rate.findOne({ asset: "USDT-TRC20" });
+    }
     if (!rateDoc || typeof rateDoc.rate !== "number" || rateDoc.rate <= 0) {
       return NextResponse.json(
         { success: false, message: `Exchange rate for ${asset} is not configured by Admin.` },

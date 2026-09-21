@@ -37,6 +37,8 @@ import {
   Ban,
   Trash2,
   ShieldCheck,
+  Copy,
+  Check,
 } from "lucide-react";
 
 interface AdminDashboardProps {
@@ -109,6 +111,17 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
   // Search & Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [txnFilter, setTxnFilter] = useState<"all" | "pending" | "completed" | "rejected">("all");
+  const [userStatusFilter, setUserStatusFilter] = useState<"all" | "active" | "blocked">("all");
+  const [userTxnFilter, setUserTxnFilter] = useState<string>("all");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopy = (text: string, id: string) => {
+    if (typeof window !== "undefined" && navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 1800);
+    }
+  };
 
   // Modals state
   const [balanceModalOpen, setBalanceModalOpen] = useState(false);
@@ -153,7 +166,12 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
       const usersRes = await fetch("/api/admin/users", { cache: "no-store" });
       const usersData = await usersRes.json();
       if (usersData.success) {
-        setUsers(usersData.users || []);
+        const fetchedUsers = usersData.users || [];
+        setUsers(fetchedUsers);
+        setSelectedUserDetails((prev: any) => {
+          if (!prev) return null;
+          return fetchedUsers.find((u: any) => u.userId === prev.userId) || prev;
+        });
       }
 
       // 3. Transactions list
@@ -336,10 +354,17 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
     setSavingRates(true);
 
     try {
+      const trcRate = rates["USDT-TRC20"] ?? rates.USDT ?? 0;
+      const ratesToSave = {
+        ...rates,
+        "USDT-TRC20": trcRate,
+        USDT: trcRate,
+      };
+
       const res = await fetch("/api/admin/rates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rates }),
+        body: JSON.stringify({ rates: ratesToSave }),
       });
 
       const data = await res.json();
@@ -539,12 +564,29 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
     }
   };
 
-  // Filtered users for search
-  const filteredUsers = users.filter(
-    (u) =>
-      u.userId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.mobileNumber.includes(searchTerm)
+  // Filtered users for search & status filter
+  const filteredUsers = users.filter((u) => {
+    const q = searchTerm.toLowerCase().trim();
+    const matchesSearch =
+      !q ||
+      (u.userId && u.userId.toLowerCase().includes(q)) ||
+      (u.name && u.name.toLowerCase().includes(q)) ||
+      (u.mobileNumber && u.mobileNumber.includes(q)) ||
+      (u.email && u.email.toLowerCase().includes(q));
+
+    if (!matchesSearch) return false;
+    if (userStatusFilter === "active") return !u.isBlocked;
+    if (userStatusFilter === "blocked") return !!u.isBlocked;
+    return true;
+  });
+
+  const totalUsersCount = users.length;
+  const activeUsersCount = users.filter((u) => !u.isBlocked).length;
+  const blockedUsersCount = users.filter((u) => u.isBlocked).length;
+  const totalUserInr = users.reduce((acc, u) => acc + (u.wallet?.inrBalance || 0), 0);
+  const totalUserUsdt = users.reduce(
+    (acc, u) => acc + (u.wallet?.usdtTrc20Balance || 0) + (u.wallet?.usdtBep20Balance || 0),
+    0
   );
 
   // Filtered transactions for search & tabs
@@ -678,175 +720,205 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
       <div className="flex-1 flex w-full relative">
         
         {/* DESKTOP SIDEBAR */}
-        <aside className="hidden lg:flex flex-col w-64 bg-slate-900/60 border-r border-slate-800 p-4 space-y-1 select-none">
-          <div className="text-[11px] font-bold text-slate-500 uppercase px-3 py-2 tracking-wider">
-            Navigation
+        <aside className="hidden lg:flex flex-col w-64 bg-slate-900/60 border-r border-slate-800 p-4 space-y-4 select-none">
+          {/* Section 1: CORE */}
+          <div className="space-y-1">
+            <div className="text-[10px] font-black text-slate-500 uppercase px-3 py-1 tracking-wider">
+              Core Platform
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("overview")}
+              className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
+                activeTab === "overview"
+                  ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+              }`}
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              <span>Overview</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("users")}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
+                activeTab === "users" || activeTab === "userDetails"
+                  ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <Users className="w-4 h-4" />
+                <span>Users Management</span>
+              </div>
+              <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 font-mono font-bold">
+                {users.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("transactions")}
+              className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
+                activeTab === "transactions"
+                  ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+              }`}
+            >
+              <History className="w-4 h-4" />
+              <span>All Transactions</span>
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab("overview")}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
-              activeTab === "overview"
-                ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
-            }`}
-          >
-            <LayoutDashboard className="w-4 h-4" />
-            <span>Dashboard Overview</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("users")}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
-              activeTab === "users"
-                ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
-            }`}
-          >
-            <div className="flex items-center space-x-3">
-              <Users className="w-4 h-4" />
-              <span>Users Management</span>
+          {/* Section 2: OPERATIONS & APPROVALS */}
+          <div className="space-y-1">
+            <div className="text-[10px] font-black text-slate-500 uppercase px-3 py-1 tracking-wider">
+              Operations & Approvals
             </div>
-            <span className="px-2 py-0.5 rounded-full text-[10px] bg-slate-800 text-slate-300 font-mono">
-              {users.length}
-            </span>
-          </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab("deposits")}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
-              activeTab === "deposits"
-                ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
-            }`}
-          >
-            <div className="flex items-center space-x-3">
-              <ArrowDownCircle className="w-4 h-4 text-emerald-400" />
-              <span>Deposits & Approvals</span>
-            </div>
-            {pendingDeposits.length > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold animate-pulse">
-                {pendingDeposits.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("withdrawals")}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
-              activeTab === "withdrawals"
-                ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
-            }`}
-          >
-            <div className="flex items-center space-x-3">
-              <ArrowUpCircle className="w-4 h-4 text-purple-400" />
-              <span>Withdrawals & Approvals</span>
-            </div>
-            {pendingWithdrawals.length > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold animate-pulse">
-                {pendingWithdrawals.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("transfers")}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
-              activeTab === "transfers"
-                ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
-            }`}
-          >
-            <div className="flex items-center space-x-3">
-              <ArrowUpCircle className="w-4 h-4 text-blue-400" />
-              <span>Transfers (USDT)</span>
-            </div>
-            {pendingTransfers.length > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold animate-pulse">
-                {pendingTransfers.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("transactions")}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
-              activeTab === "transactions"
-                ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
-            }`}
-          >
-            <History className="w-4 h-4" />
-            <span>All Transactions</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("wallets")}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
-              activeTab === "wallets"
-                ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
-            }`}
-          >
-            <Wallet className="w-4 h-4 text-amber-400" />
-            <span>System Wallets</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("rates")}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
-              activeTab === "rates"
-                ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
-            }`}
-          >
-            <DollarSign className="w-4 h-4 text-[#F5B301]" />
-            <span>Exchange Rates</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("limits")}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
-              activeTab === "limits"
-                ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
-            }`}
-          >
-            <Settings className="w-4 h-4 text-[#31A9F6]" />
-            <span>Withdrawal Limits</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("depositSettings")}
-            className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
-              activeTab === "depositSettings"
-                ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
-                : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
-            }`}
-          >
-            <QrCode className="w-4 h-4 text-purple-400" />
-            <span>Deposit Settings (QR)</span>
-          </button>
-
-          <div className="pt-4 mt-auto">
-            <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-2xl flex flex-col space-y-2">
-              <div className="flex items-center space-x-2">
-                <Sparkles className="w-4 h-4 text-[#F5B301]" />
-                <span className="text-xs font-bold text-white">Theme Active</span>
+            <button
+              type="button"
+              onClick={() => setActiveTab("deposits")}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
+                activeTab === "deposits"
+                  ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <ArrowDownCircle className="w-4 h-4 text-emerald-400" />
+                <span>Deposits</span>
               </div>
-              <p className="text-[11px] text-slate-400 leading-tight">
-                Brand gradient blue, slate dark layout & high density stats.
+              {pendingDeposits.length > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold animate-pulse">
+                  {pendingDeposits.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("withdrawals")}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
+                activeTab === "withdrawals"
+                  ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <ArrowUpCircle className="w-4 h-4 text-purple-400" />
+                <span>Withdrawals</span>
+              </div>
+              {pendingWithdrawals.length > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold animate-pulse">
+                  {pendingWithdrawals.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("transfers")}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
+                activeTab === "transfers"
+                  ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <ArrowUpCircle className="w-4 h-4 text-blue-400" />
+                <span>Transfers</span>
+              </div>
+              {pendingTransfers.length > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold animate-pulse">
+                  {pendingTransfers.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("wallets")}
+              className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
+                activeTab === "wallets"
+                  ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+              }`}
+            >
+              <Wallet className="w-4 h-4 text-amber-400" />
+              <span>System Wallets</span>
+            </button>
+          </div>
+
+          {/* Section 3: CONFIGURATION */}
+          <div className="space-y-1">
+            <div className="text-[10px] font-black text-slate-500 uppercase px-3 py-1 tracking-wider">
+              Platform Settings
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("rates")}
+              className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
+                activeTab === "rates"
+                  ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+              }`}
+            >
+              <DollarSign className="w-4 h-4 text-[#F5B301]" />
+              <span>Exchange Rates</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("limits")}
+              className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
+                activeTab === "limits"
+                  ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+              }`}
+            >
+              <Settings className="w-4 h-4 text-[#31A9F6]" />
+              <span>Withdrawal Limits</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("depositSettings")}
+              className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
+                activeTab === "depositSettings"
+                  ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+              }`}
+            >
+              <QrCode className="w-4 h-4 text-purple-400" />
+              <span>Deposit Settings (QR)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("settings")}
+              className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl font-medium text-xs transition-all cursor-pointer ${
+                activeTab === "settings"
+                  ? "bg-[#31A9F6] text-white font-bold shadow-[0_4px_15px_rgba(49,169,246,0.3)]"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+              }`}
+            >
+              <Lock className="w-4 h-4 text-rose-400" />
+              <span>Admin Credentials</span>
+            </button>
+          </div>
+
+          <div className="pt-2 mt-auto">
+            <div className="p-3 bg-slate-950/80 border border-slate-800/80 rounded-2xl flex flex-col space-y-1.5">
+              <div className="flex items-center space-x-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="text-xs font-bold text-white">System Status</span>
+              </div>
+              <p className="text-[10px] text-slate-400 leading-tight">
+                All microservices & databases synchronized.
               </p>
             </div>
           </div>
@@ -859,7 +931,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
               onClick={() => setMobileMenuOpen(false)}
               className="fixed inset-0 bg-black/70 backdrop-blur-sm"
             />
-            <div className="relative w-72 max-w-[80%] bg-slate-950 border-r border-slate-800 h-full p-5 flex flex-col z-10 animate-in slide-in-from-left duration-200">
+            <div className="relative w-72 max-w-[80%] bg-slate-950 border-r border-slate-800 h-full p-5 flex flex-col z-10 animate-in slide-in-from-left duration-200 overflow-y-auto">
               <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
                 <div className="font-extrabold text-base text-white">
                   ind-X <span className="text-[#31A9F6]">Admin</span>
@@ -876,14 +948,16 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
               <div className="space-y-1.5">
                 {[
                   { key: "overview", label: "Dashboard Overview", icon: LayoutDashboard },
-                  { key: "users", label: `Users (${users.length})`, icon: Users },
+                  { key: "users", label: `Users Management (${users.length})`, icon: Users },
                   { key: "deposits", label: `Deposits (${pendingDeposits.length})`, icon: ArrowDownCircle },
                   { key: "withdrawals", label: `Withdrawals (${pendingWithdrawals.length})`, icon: ArrowUpCircle },
-                  { key: "transactions", label: "Transactions", icon: History },
+                  { key: "transfers", label: `Transfers (${pendingTransfers.length})`, icon: ArrowUpCircle },
+                  { key: "transactions", label: "All Transactions", icon: History },
                   { key: "wallets", label: "System Wallets", icon: Wallet },
                   { key: "rates", label: "Exchange Rates", icon: DollarSign },
                   { key: "limits", label: "Withdrawal Limits", icon: Settings },
                   { key: "depositSettings", label: "Deposit Settings (QR)", icon: QrCode },
+                  { key: "settings", label: "Admin Security Settings", icon: Lock },
                 ].map((item) => {
                   const IconComp = item.icon;
                   const isCurrent = activeTab === item.key;
@@ -1162,7 +1236,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                           <div className="text-[11px] text-slate-400">Tether USD (TRC20 / Standard)</div>
                         </div>
                       </div>
-                      <span className="text-xs font-mono text-[#31A9F6]">1 USDT = ₹{rates.USDT}</span>
+                      <span className="text-xs font-mono text-[#31A9F6]">1 USDT = ₹{rates["USDT-TRC20"] ?? rates.USDT ?? 0}</span>
                     </div>
 
                     <div className="space-y-1">
@@ -1172,8 +1246,11 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                         <input
                           type="number"
                           step="any"
-                          value={rates.USDT || ""}
-                          onChange={(e) => setRates({ ...rates, USDT: parseFloat(e.target.value) || 0 })}
+                          value={rates["USDT-TRC20"] ?? rates.USDT ?? ""}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            setRates({ ...rates, "USDT-TRC20": val, USDT: val });
+                          }}
                           className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-4 text-sm text-white font-bold outline-none focus:border-[#31A9F6]"
                         />
                       </div>
@@ -1552,86 +1629,377 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
           {/* USERS MANAGEMENT TAB */}
           {activeTab === "users" && (
             <div className="space-y-6 animate-in fade-in duration-300">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              {/* Header & Quick Action */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-base sm:text-lg font-bold text-white flex items-center space-x-2">
-                    <Users className="w-5 h-5 text-[#31A9F6]" />
+                  <h2 className="text-xl sm:text-2xl font-extrabold text-white flex items-center space-x-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-[#31A9F6]/10 border border-[#31A9F6]/30 flex items-center justify-center text-[#31A9F6]">
+                      <Users className="w-5 h-5" />
+                    </div>
                     <span>Users Management</span>
                   </h2>
-                  <p className="text-xs text-slate-400">View and manage all registered users.</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Manage registered users, inspect wallets, adjust balances, and enforce account access controls (block & delete).
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedUserForBalance(users[0] || null);
+                      setBalanceModalOpen(true);
+                    }}
+                    className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-[#31A9F6]/10 hover:bg-[#31A9F6]/20 border border-[#31A9F6]/40 text-[#31A9F6] font-semibold text-xs transition-all cursor-pointer shadow-sm"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    <span>Adjust Balance</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fetchData(true)}
+                    disabled={refreshing}
+                    className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer"
+                    title="Refresh users"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin text-[#31A9F6]" : ""}`} />
+                  </button>
                 </div>
               </div>
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-md">
+
+              {/* 5 KPI SUMMARY STAT CARDS */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+                {/* Total Users */}
+                <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl p-4 shadow-md hover:border-[#31A9F6]/40 transition-all">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Users</span>
+                    <div className="w-7 h-7 rounded-lg bg-[#31A9F6]/10 text-[#31A9F6] flex items-center justify-center">
+                      <Users className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="mt-2.5 flex items-baseline justify-between">
+                    <span className="text-2xl font-black text-white">{totalUsersCount}</span>
+                    <span className="text-[10px] font-bold text-slate-500">Registered</span>
+                  </div>
+                </div>
+
+                {/* Active Users */}
+                <div
+                  onClick={() => setUserStatusFilter(userStatusFilter === "active" ? "all" : "active")}
+                  className={`bg-slate-900/90 border rounded-2xl p-4 shadow-md transition-all cursor-pointer ${
+                    userStatusFilter === "active" ? "border-emerald-500 bg-emerald-950/20" : "border-slate-800/90 hover:border-emerald-500/40"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Active</span>
+                    <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="mt-2.5 flex items-baseline justify-between">
+                    <span className="text-2xl font-black text-emerald-400">{activeUsersCount}</span>
+                    <span className="text-[10px] font-bold text-emerald-500/80">Operational</span>
+                  </div>
+                </div>
+
+                {/* Blocked Users */}
+                <div
+                  onClick={() => setUserStatusFilter(userStatusFilter === "blocked" ? "all" : "blocked")}
+                  className={`bg-slate-900/90 border rounded-2xl p-4 shadow-md transition-all cursor-pointer ${
+                    userStatusFilter === "blocked" ? "border-rose-500 bg-rose-950/20" : "border-slate-800/90 hover:border-rose-500/40"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Blocked</span>
+                    <div className="w-7 h-7 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center">
+                      <Ban className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="mt-2.5 flex items-baseline justify-between">
+                    <span className="text-2xl font-black text-rose-400">{blockedUsersCount}</span>
+                    <span className="text-[10px] font-bold text-rose-400/80">Restricted</span>
+                  </div>
+                </div>
+
+                {/* User INR Holdings */}
+                <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl p-4 shadow-md hover:border-[#31A9F6]/40 transition-all">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">INR Holding</span>
+                    <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center font-bold text-xs">
+                      ₹
+                    </div>
+                  </div>
+                  <div className="mt-2.5">
+                    <span className="text-lg sm:text-xl font-extrabold text-white truncate block">
+                      ₹{totalUserInr.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+
+                {/* User USDT Holdings */}
+                <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl p-4 shadow-md hover:border-amber-500/40 transition-all col-span-2 sm:col-span-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">USDT Holding</span>
+                    <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold text-xs">
+                      ₮
+                    </div>
+                  </div>
+                  <div className="mt-2.5">
+                    <span className="text-lg sm:text-xl font-extrabold text-amber-400 truncate block">
+                      ${totalUserUsdt.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* SEARCH & STATUS FILTER TOOLBAR */}
+              <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-3">
+                {/* Status Tabs */}
+                <div className="flex items-center space-x-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800/80 w-fit">
+                  <button
+                    type="button"
+                    onClick={() => setUserStatusFilter("all")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      userStatusFilter === "all"
+                        ? "bg-[#31A9F6] text-white shadow-sm"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    All Users ({totalUsersCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUserStatusFilter("active")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      userStatusFilter === "active"
+                        ? "bg-emerald-600 text-white shadow-sm"
+                        : "text-slate-400 hover:text-emerald-400"
+                    }`}
+                  >
+                    Active ({activeUsersCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUserStatusFilter("blocked")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      userStatusFilter === "blocked"
+                        ? "bg-rose-600 text-white shadow-sm"
+                        : "text-slate-400 hover:text-rose-400"
+                    }`}
+                  >
+                    Blocked ({blockedUsersCount})
+                  </button>
+                </div>
+
+                {/* Search query box */}
+                <div className="relative flex-1 max-w-md">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <input
+                    type="text"
+                    placeholder="Search by Name, User ID, Phone, or Email..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full h-10 bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-9 text-xs text-white placeholder-slate-500 outline-none focus:border-[#31A9F6] transition-all"
+                  />
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm("")}
+                      className="absolute right-3 top-3 text-slate-500 hover:text-white"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="text-xs text-slate-400 font-medium whitespace-nowrap">
+                  Showing <span className="font-bold text-white">{filteredUsers.length}</span> of {users.length} accounts
+                </div>
+              </div>
+
+              {/* DESKTOP USERS TABLE */}
+              <div className="hidden md:block bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-md">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm text-slate-300">
-                    <thead className="bg-slate-950/50 text-xs uppercase font-semibold text-slate-500 border-b border-slate-800">
+                    <thead className="bg-slate-950/80 text-[11px] uppercase font-bold text-slate-400 border-b border-slate-800 tracking-wider">
                       <tr>
-                        <th className="px-4 py-3">User</th>
-                        <th className="px-4 py-3">Contact</th>
-                        <th className="px-4 py-3">Balances</th>
-                        <th className="px-4 py-3">Status</th>
-                        <th className="px-4 py-3">Joined</th>
-                        <th className="px-4 py-3 text-right">Actions</th>
+                        <th className="px-4 py-3.5">User Identity</th>
+                        <th className="px-4 py-3.5">Contact</th>
+                        <th className="px-4 py-3.5">Balances (INR / USDT)</th>
+                        <th className="px-4 py-3.5">Account Status</th>
+                        <th className="px-4 py-3.5">Registered</th>
+                        <th className="px-4 py-3.5 text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800">
+                    <tbody className="divide-y divide-slate-800/80">
                       {filteredUsers.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="px-4 py-8 text-center text-slate-500 text-xs">No users found.</td>
+                          <td colSpan={6} className="px-4 py-12 text-center text-slate-500 text-xs">
+                            <Users className="w-8 h-8 mx-auto mb-2 text-slate-600 opacity-50" />
+                            No matching users found for this filter.
+                          </td>
                         </tr>
                       ) : (
                         filteredUsers.map((u) => (
-                          <tr key={u._id} className="hover:bg-slate-800/40 transition-colors">
-                            <td className="px-4 py-3">
+                          <tr key={u._id} className="hover:bg-slate-800/30 transition-colors">
+                            {/* User Identity */}
+                            <td className="px-4 py-3.5">
                               <div className="flex items-center space-x-3">
-                                <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center font-bold text-[#31A9F6]">
+                                <div
+                                  className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm shadow-sm shrink-0 ${
+                                    u.isBlocked
+                                      ? "bg-rose-500/10 text-rose-400 border border-rose-500/30"
+                                      : "bg-[#31A9F6]/10 text-[#31A9F6] border border-[#31A9F6]/30"
+                                  }`}
+                                >
                                   {u.name.charAt(0).toUpperCase()}
                                 </div>
-                                <div>
-                                  <div className="font-bold text-white text-xs">{u.name}</div>
-                                  <div className="text-[10px] font-mono text-[#31A9F6]">{u.userId}</div>
+                                <div className="min-w-0">
+                                  <div className="font-bold text-white text-xs flex items-center space-x-1.5">
+                                    <span className="truncate max-w-[140px]">{u.name}</span>
+                                    {u.referralId && (
+                                      <span className="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-mono">
+                                        Ref: {u.referralId}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center space-x-1 mt-0.5">
+                                    <span className="text-[11px] font-mono text-[#31A9F6] font-bold">{u.userId}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCopy(u.userId, `id-${u.userId}`)}
+                                      className="text-slate-500 hover:text-white transition-colors cursor-pointer"
+                                      title="Copy User ID"
+                                    >
+                                      {copiedId === `id-${u.userId}` ? (
+                                        <Check className="w-3 h-3 text-emerald-400" />
+                                      ) : (
+                                        <Copy className="w-3 h-3" />
+                                      )}
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-4 py-3 text-xs">{u.mobileNumber}</td>
-                            <td className="px-4 py-3 text-xs">
+
+                            {/* Contact */}
+                            <td className="px-4 py-3.5 text-xs">
                               <div className="flex flex-col">
-                                <span className="font-bold text-slate-200">₹{(u.wallet?.inrBalance || 0).toLocaleString()}</span>
-                                <span className="text-[10px] text-emerald-400 font-mono">${(u.wallet?.usdtTrc20Balance || 0).toLocaleString()}</span>
+                                <div className="flex items-center space-x-1 text-slate-200 font-mono">
+                                  <span>{u.mobileNumber}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopy(u.mobileNumber, `phone-${u.userId}`)}
+                                    className="text-slate-500 hover:text-white cursor-pointer"
+                                    title="Copy Phone"
+                                  >
+                                    {copiedId === `phone-${u.userId}` ? (
+                                      <Check className="w-3 h-3 text-emerald-400" />
+                                    ) : (
+                                      <Copy className="w-3 h-3" />
+                                    )}
+                                  </button>
+                                </div>
+                                <span className="text-[11px] text-slate-400 truncate max-w-[150px]">
+                                  {u.email || "No email"}
+                                </span>
                               </div>
                             </td>
-                            <td className="px-4 py-3">
-                              {u.isBlocked ? (
-                                <span className="inline-flex items-center space-x-1 px-2 py-1 rounded-md bg-rose-950 border border-rose-800 text-rose-300 text-[10px] font-bold uppercase">
-                                  <Ban className="w-3 h-3" />
-                                  <span>Blocked</span>
+
+                            {/* Balances */}
+                            <td className="px-4 py-3.5 text-xs">
+                              <div className="flex flex-col">
+                                <span className="font-extrabold text-white text-xs">
+                                  ₹{(u.wallet?.inrBalance || 0).toLocaleString()}
                                 </span>
+                                <div className="flex items-center space-x-2 text-[10px] font-mono mt-0.5">
+                                  <span className="text-emerald-400">TRC: ${(u.wallet?.usdtTrc20Balance || 0).toLocaleString()}</span>
+                                  <span className="text-slate-500">•</span>
+                                  <span className="text-amber-400">BEP: ${(u.wallet?.usdtBep20Balance || 0).toLocaleString()}</span>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Status */}
+                            <td className="px-4 py-3.5">
+                              {u.isBlocked ? (
+                                <div className="flex flex-col items-start space-y-0.5">
+                                  <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-rose-950/80 border border-rose-800 text-rose-300 text-[10px] font-extrabold uppercase tracking-wide">
+                                    <Ban className="w-3 h-3 text-rose-400" />
+                                    <span>Blocked</span>
+                                  </span>
+                                  {u.blockReason && (
+                                    <span className="text-[10px] text-rose-400/70 truncate max-w-[130px]" title={u.blockReason}>
+                                      {u.blockReason}
+                                    </span>
+                                  )}
+                                </div>
                               ) : (
-                                <span className="inline-flex items-center space-x-1 px-2 py-1 rounded-md bg-emerald-950 border border-emerald-800 text-emerald-300 text-[10px] font-bold uppercase">
-                                  <CheckCircle2 className="w-3 h-3" />
+                                <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-800 text-emerald-300 text-[10px] font-extrabold uppercase tracking-wide">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                                   <span>Active</span>
                                 </span>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-xs text-slate-400">
-                              {new Date(u.createdAt).toLocaleDateString()}
+
+                            {/* Joined */}
+                            <td className="px-4 py-3.5 text-xs text-slate-400">
+                              {new Date(u.createdAt).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })}
                             </td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center justify-end space-x-1.5">
-                                <button onClick={() => { setSelectedUserDetails(u); setActiveTab("userDetails" as any); }} className="p-1.5 rounded-lg bg-[#31A9F6]/10 text-[#31A9F6] hover:bg-[#31A9F6]/20 border border-[#31A9F6]/30 transition-colors inline-flex cursor-pointer" title="View Full Details">
-                                  <Eye className="w-4 h-4" />
+
+                            {/* Actions */}
+                            <td className="px-4 py-3.5 text-right">
+                              <div className="flex items-center justify-end space-x-2">
+                                {/* View User Details */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedUserDetails(u);
+                                    setActiveTab("userDetails" as any);
+                                  }}
+                                  className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-[#31A9F6]/10 text-[#31A9F6] hover:bg-[#31A9F6]/20 border border-[#31A9F6]/30 text-xs font-semibold transition-all cursor-pointer shadow-sm"
+                                  title="View Profile & Transactions"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  <span>Details</span>
                                 </button>
+
+                                {/* Block or Unblock */}
                                 {u.isBlocked ? (
-                                  <button onClick={() => openUserActionModal(u, "unblock")} className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30 transition-colors inline-flex cursor-pointer" title="Unblock User">
-                                    <ShieldCheck className="w-4 h-4" />
+                                  <button
+                                    type="button"
+                                    onClick={() => openUserActionModal(u, "unblock")}
+                                    className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30 text-xs font-semibold transition-all cursor-pointer"
+                                    title="Unblock User"
+                                  >
+                                    <ShieldCheck className="w-3.5 h-3.5" />
+                                    <span>Unblock</span>
                                   </button>
                                 ) : (
-                                  <button onClick={() => openUserActionModal(u, "block")} className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 transition-colors inline-flex cursor-pointer" title="Block User">
-                                    <Ban className="w-4 h-4" />
+                                  <button
+                                    type="button"
+                                    onClick={() => openUserActionModal(u, "block")}
+                                    className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 border border-amber-500/30 text-xs font-semibold transition-all cursor-pointer"
+                                    title="Block User"
+                                  >
+                                    <Ban className="w-3.5 h-3.5" />
+                                    <span>Block</span>
                                   </button>
                                 )}
-                                <button onClick={() => openUserActionModal(u, "delete")} className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 transition-colors inline-flex cursor-pointer" title="Delete User">
-                                  <Trash2 className="w-4 h-4" />
+
+                                {/* Delete User */}
+                                <button
+                                  type="button"
+                                  onClick={() => openUserActionModal(u, "delete")}
+                                  className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 text-xs font-semibold transition-all cursor-pointer"
+                                  title="Delete User Permanently"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Delete</span>
                                 </button>
                               </div>
                             </td>
@@ -1641,6 +2009,132 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                     </tbody>
                   </table>
                 </div>
+              </div>
+
+              {/* MOBILE RESPONSIVE USERS CARD VIEW */}
+              <div className="md:hidden space-y-3">
+                {filteredUsers.length === 0 ? (
+                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-slate-500 text-xs">
+                    No matching users found.
+                  </div>
+                ) : (
+                  filteredUsers.map((u) => (
+                    <div
+                      key={u._id}
+                      className={`bg-slate-900/90 border rounded-2xl p-4 shadow-md space-y-3 transition-all ${
+                        u.isBlocked ? "border-rose-800/80 bg-rose-950/10" : "border-slate-800"
+                      }`}
+                    >
+                      {/* Top Row: User Avatar, Name, Status */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
+                              u.isBlocked
+                                ? "bg-rose-500/10 text-rose-400 border border-rose-500/30"
+                                : "bg-[#31A9F6]/10 text-[#31A9F6] border border-[#31A9F6]/30"
+                            }`}
+                          >
+                            {u.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="font-bold text-white text-sm">{u.name}</div>
+                            <div className="flex items-center space-x-1">
+                              <span className="text-xs font-mono text-[#31A9F6] font-bold">{u.userId}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopy(u.userId, `mid-${u.userId}`)}
+                                className="text-slate-500 hover:text-white"
+                              >
+                                {copiedId === `mid-${u.userId}` ? (
+                                  <Check className="w-3 h-3 text-emerald-400" />
+                                ) : (
+                                  <Copy className="w-3 h-3" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {u.isBlocked ? (
+                          <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-rose-950 border border-rose-800 text-rose-300 text-[10px] font-extrabold uppercase">
+                            <Ban className="w-3 h-3 text-rose-400" />
+                            <span>Blocked</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full bg-emerald-950 border border-emerald-800 text-emerald-300 text-[10px] font-extrabold uppercase">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                            <span>Active</span>
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Balances summary */}
+                      <div className="grid grid-cols-2 gap-2 bg-slate-950 p-2.5 rounded-xl border border-slate-800/80 text-xs">
+                        <div>
+                          <span className="text-[10px] text-slate-500 uppercase font-bold block">INR Balance</span>
+                          <span className="font-extrabold text-white text-sm">₹{(u.wallet?.inrBalance || 0).toLocaleString()}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-500 uppercase font-bold block">USDT Holdings</span>
+                          <span className="font-extrabold text-emerald-400 text-sm">
+                            ${((u.wallet?.usdtTrc20Balance || 0) + (u.wallet?.usdtBep20Balance || 0)).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Contact & Meta */}
+                      <div className="flex justify-between text-xs text-slate-400 pt-1">
+                        <span>Phone: <span className="font-mono text-slate-200">{u.mobileNumber}</span></span>
+                        <span>Joined: {new Date(u.createdAt).toLocaleDateString()}</span>
+                      </div>
+
+                      {/* Action buttons on Mobile */}
+                      <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800/80">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedUserDetails(u);
+                            setActiveTab("userDetails" as any);
+                          }}
+                          className="flex items-center justify-center space-x-1 py-2 rounded-xl bg-[#31A9F6]/10 text-[#31A9F6] border border-[#31A9F6]/30 text-xs font-bold"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Details</span>
+                        </button>
+
+                        {u.isBlocked ? (
+                          <button
+                            type="button"
+                            onClick={() => openUserActionModal(u, "unblock")}
+                            className="flex items-center justify-center space-x-1 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-bold"
+                          >
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            <span>Unblock</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => openUserActionModal(u, "block")}
+                            className="flex items-center justify-center space-x-1 py-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-bold"
+                          >
+                            <Ban className="w-3.5 h-3.5" />
+                            <span>Block</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => openUserActionModal(u, "delete")}
+                          className="flex items-center justify-center space-x-1 py-2 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/30 text-xs font-bold"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -1878,173 +2372,501 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
 {/* USER FULL DETAILS PAGE */}
           {activeTab === "userDetails" && selectedUserDetails && (
             <div className="space-y-6 animate-in fade-in duration-300">
-              <div className="flex flex-wrap items-center gap-4 mb-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("users")}
-                  className="p-2 rounded-xl bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-                </button>
-                <div className="flex-1">
-                  <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center flex-wrap gap-2">
-                    <UserCheck className="w-6 h-6 text-[#31A9F6]" />
-                    <span>User Details: {selectedUserDetails.name}</span>
-                    {selectedUserDetails.isBlocked && (
-                      <span className="inline-flex items-center space-x-1 px-2 py-1 rounded-md bg-rose-950 border border-rose-800 text-rose-300 text-[10px] font-bold uppercase">
-                        <Ban className="w-3 h-3" />
-                        <span>Blocked</span>
-                      </span>
-                    )}
-                  </h2>
-                  <p className="text-xs text-slate-400">Comprehensive view of user profile, wallets, and transaction history.</p>
+              {/* Top Navigation & Action Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
+                <div className="flex items-center space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("users")}
+                    className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shadow-sm"
+                    title="Back to Users"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                  </button>
+                  <div>
+                    <div className="flex items-center space-x-2 text-xs text-slate-400 mb-0.5">
+                      <button type="button" onClick={() => setActiveTab("users")} className="hover:text-[#31A9F6] cursor-pointer">Users Directory</button>
+                      <span>/</span>
+                      <span className="text-slate-300 font-mono">{selectedUserDetails.userId}</span>
+                    </div>
+                    <h2 className="text-xl sm:text-2xl font-black text-white flex items-center flex-wrap gap-2.5">
+                      <span>{selectedUserDetails.name}</span>
+                      {selectedUserDetails.isBlocked ? (
+                        <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-rose-950/90 border border-rose-800 text-rose-300 text-[11px] font-black uppercase tracking-wider">
+                          <Ban className="w-3.5 h-3.5 text-rose-400" />
+                          <span>Blocked</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-emerald-950/90 border border-emerald-800 text-emerald-300 text-[11px] font-black uppercase tracking-wider">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                          <span>Active</span>
+                        </span>
+                      )}
+                    </h2>
+                  </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
+                {/* Top Quick Actions */}
+                <div className="flex items-center flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedUserForBalance(selectedUserDetails);
+                      setBalanceModalOpen(true);
+                    }}
+                    className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-[#31A9F6]/10 text-[#31A9F6] hover:bg-[#31A9F6]/20 border border-[#31A9F6]/30 text-xs font-bold transition-all cursor-pointer shadow-sm"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    <span>Adjust Balance</span>
+                  </button>
+
                   {selectedUserDetails.isBlocked ? (
                     <button
                       type="button"
                       onClick={() => openUserActionModal(selectedUserDetails, "unblock")}
-                      className="inline-flex items-center space-x-2 px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30 text-xs font-bold transition-colors cursor-pointer"
+                      className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all cursor-pointer shadow-md"
                     >
                       <ShieldCheck className="w-4 h-4" />
-                      <span className="hidden sm:inline">Unblock</span>
+                      <span>Unblock User</span>
                     </button>
                   ) : (
                     <button
                       type="button"
                       onClick={() => openUserActionModal(selectedUserDetails, "block")}
-                      className="inline-flex items-center space-x-2 px-3 py-2 rounded-xl bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 text-xs font-bold transition-colors cursor-pointer"
+                      className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 border border-amber-500/30 text-xs font-bold transition-all cursor-pointer"
                     >
                       <Ban className="w-4 h-4" />
-                      <span className="hidden sm:inline">Block</span>
+                      <span>Block User</span>
                     </button>
                   )}
+
                   <button
                     type="button"
                     onClick={() => openUserActionModal(selectedUserDetails, "delete")}
-                    className="inline-flex items-center space-x-2 px-3 py-2 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 text-xs font-bold transition-colors cursor-pointer"
+                    className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 text-xs font-bold transition-all cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
-                    <span className="hidden sm:inline">Delete</span>
+                    <span>Delete</span>
                   </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Profile Card */}
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-md space-y-4">
-                  <h4 className="text-[#31A9F6] text-sm font-bold uppercase tracking-wider mb-2 border-b border-slate-800 pb-2">Profile Information</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] text-slate-500 font-bold uppercase">Full Name</span>
-                      <span className="font-bold text-white text-base">{selectedUserDetails.name}</span>
+              {/* BLOCKED STATUS BANNER IF RESTRICTED */}
+              {selectedUserDetails.isBlocked && (
+                <div className="bg-rose-950/40 border border-rose-800/80 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl animate-in fade-in">
+                  <div className="flex items-start sm:items-center space-x-3.5">
+                    <div className="w-11 h-11 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 shrink-0">
+                      <Ban className="w-6 h-6" />
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] text-slate-500 font-bold uppercase">User ID</span>
-                      <span className="font-mono text-[#31A9F6] text-sm bg-[#31A9F6]/10 px-2 py-1 rounded w-fit">{selectedUserDetails.userId}</span>
+                    <div>
+                      <div className="text-sm sm:text-base font-black text-rose-200">
+                        Account Access is Currently Suspended
+                      </div>
+                      <div className="text-xs text-rose-300/80 mt-0.5">
+                        {selectedUserDetails.blockReason ? (
+                          <span>Reason: <strong className="text-white font-semibold">"{selectedUserDetails.blockReason}"</strong> • </span>
+                        ) : null}
+                        Blocked on {selectedUserDetails.blockedAt ? new Date(selectedUserDetails.blockedAt).toLocaleString() : "record"}.
+                        All logins, sales, deposits, and withdrawals are blocked.
+                      </div>
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] text-slate-500 font-bold uppercase">Mobile Number</span>
-                      <span className="text-slate-200 text-sm">{selectedUserDetails.mobileNumber}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openUserActionModal(selectedUserDetails, "unblock")}
+                    className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg transition-all cursor-pointer shrink-0"
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Restore & Unblock User</span>
+                  </button>
+                </div>
+              )}
+
+              {/* 3-GRID OVERVIEW OF PROFILE, BALANCES & GOVERNANCE */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* 1. Profile Information Card */}
+                <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-md space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center space-x-2">
+                      <Users className="w-4 h-4 text-[#31A9F6]" />
+                      <span>Profile Information</span>
+                    </h4>
+                    <span className="text-[10px] font-mono text-slate-500">ID: {selectedUserDetails.userId}</span>
+                  </div>
+
+                  <div className="space-y-3.5 text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Full Legal Name</span>
+                      <span className="font-bold text-white text-sm">{selectedUserDetails.name}</span>
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] text-slate-500 font-bold uppercase">Email Address</span>
-                      <span className="text-slate-200 text-sm">{selectedUserDetails.email || "N/A"}</span>
+
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-bold block mb-1">User Identifier</span>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono text-[#31A9F6] bg-[#31A9F6]/10 px-2.5 py-1 rounded-lg font-bold">
+                          {selectedUserDetails.userId}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(selectedUserDetails.userId, `det-id-${selectedUserDetails.userId}`)}
+                          className="p-1 rounded-md text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
+                          title="Copy User ID"
+                        >
+                          {copiedId === `det-id-${selectedUserDetails.userId}` ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] text-slate-500 font-bold uppercase">Referral ID (Invited By)</span>
-                      <span className="text-slate-300 font-mono text-sm">{selectedUserDetails.referralId || "None"}</span>
+
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Mobile Contact</span>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-slate-200 font-mono">{selectedUserDetails.mobileNumber}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(selectedUserDetails.mobileNumber, `det-phone-${selectedUserDetails.userId}`)}
+                          className="p-1 rounded-md text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
+                          title="Copy Phone"
+                        >
+                          {copiedId === `det-phone-${selectedUserDetails.userId}` ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] text-slate-500 font-bold uppercase">Joined Date</span>
-                      <span className="text-slate-200 text-sm">{new Date(selectedUserDetails.createdAt).toLocaleString()}</span>
+
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Email Address</span>
+                      <span className="text-slate-300">{selectedUserDetails.email || "No email registered"}</span>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Invited By (Referral ID)</span>
+                      <span className="text-slate-300 font-mono bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                        {selectedUserDetails.referralId || "Direct Registration (None)"}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Account Registered</span>
+                      <span className="text-slate-300">
+                        {new Date(selectedUserDetails.createdAt).toLocaleString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Wallets & Income Card */}
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-md space-y-4">
-                  <h4 className="text-emerald-400 text-sm font-bold uppercase tracking-wider mb-2 border-b border-slate-800 pb-2">Wallets & Balances</h4>
-                  <div className="space-y-3">
+                {/* 2. Wallets & Balances Card */}
+                <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-md space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center space-x-2">
+                      <Wallet className="w-4 h-4 text-emerald-400" />
+                      <span>Wallet Balances</span>
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedUserForBalance(selectedUserDetails);
+                        setBalanceModalOpen(true);
+                      }}
+                      className="text-[11px] font-bold text-[#31A9F6] hover:underline cursor-pointer flex items-center space-x-1"
+                    >
+                      <PlusCircle className="w-3 h-3" />
+                      <span>Adjust</span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {/* INR */}
                     <div className="flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-800/80">
-                      <span className="text-xs text-slate-400 font-bold uppercase">INR Balance</span>
-                      <span className="font-extrabold text-white text-lg">₹{(selectedUserDetails.wallet?.inrBalance || 0).toLocaleString()}</span>
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase block">INR Balance</span>
+                        <span className="text-xs text-slate-500">Fiat Account</span>
+                      </div>
+                      <span className="font-black text-white text-lg sm:text-xl">
+                        ₹{(selectedUserDetails.wallet?.inrBalance || 0).toLocaleString()}
+                      </span>
                     </div>
+
+                    {/* USDT-TRC20 */}
                     <div className="flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-800/80">
-                      <span className="text-xs text-slate-400 font-bold uppercase">USDT Balance</span>
-                      <span className="font-extrabold text-emerald-400 text-lg">${(selectedUserDetails.wallet?.usdtTrc20Balance || 0).toLocaleString()}</span>
+                      <div>
+                        <span className="text-[10px] text-emerald-400 font-bold uppercase block">USDT (TRC20)</span>
+                        <span className="text-xs text-slate-500">Tron Network</span>
+                      </div>
+                      <span className="font-black text-emerald-400 text-lg sm:text-xl">
+                        ${(selectedUserDetails.wallet?.usdtTrc20Balance || 0).toLocaleString()}
+                      </span>
                     </div>
+
+                    {/* USDT-BEP20 */}
                     <div className="flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-800/80">
-                      <span className="text-xs text-slate-400 font-bold uppercase">USDT-BEP20 Balance</span>
-                      <span className="font-extrabold text-amber-400 text-lg">${(selectedUserDetails.wallet?.usdtBep20Balance || 0).toLocaleString()}</span>
+                      <div>
+                        <span className="text-[10px] text-amber-400 font-bold uppercase block">USDT (BEP20)</span>
+                        <span className="text-xs text-slate-500">BNB Chain</span>
+                      </div>
+                      <span className="font-black text-amber-400 text-lg sm:text-xl">
+                        ${(selectedUserDetails.wallet?.usdtBep20Balance || 0).toLocaleString()}
+                      </span>
                     </div>
                   </div>
-                  <div className="pt-2">
-                    <h4 className="text-purple-400 text-xs font-bold uppercase tracking-wider mb-3">Income Stats</h4>
+
+                  {/* Referral Income breakdown */}
+                  <div className="pt-2 border-t border-slate-800">
+                    <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Referral & Commission Earnings</h5>
                     <div className="grid grid-cols-3 gap-2">
-                      <div className="bg-slate-800/30 p-2 rounded-lg text-center border border-slate-800/50">
-                        <span className="block text-[10px] text-slate-500 uppercase">Level</span>
-                        <span className="block text-slate-300 font-bold text-sm">₹{(selectedUserDetails.wallet?.levelIncome || 0).toLocaleString()}</span>
+                      <div className="bg-slate-950 p-2 rounded-xl text-center border border-slate-800/80">
+                        <span className="block text-[9px] text-slate-500 uppercase font-bold">Level</span>
+                        <span className="block text-slate-200 font-extrabold text-xs mt-0.5">
+                          ₹{(selectedUserDetails.wallet?.levelIncome || 0).toLocaleString()}
+                        </span>
                       </div>
-                      <div className="bg-slate-800/30 p-2 rounded-lg text-center border border-slate-800/50">
-                        <span className="block text-[10px] text-slate-500 uppercase">LTD</span>
-                        <span className="block text-slate-300 font-bold text-sm">₹{(selectedUserDetails.wallet?.ltdIncome || 0).toLocaleString()}</span>
+                      <div className="bg-slate-950 p-2 rounded-xl text-center border border-slate-800/80">
+                        <span className="block text-[9px] text-slate-500 uppercase font-bold">LTD</span>
+                        <span className="block text-slate-200 font-extrabold text-xs mt-0.5">
+                          ₹{(selectedUserDetails.wallet?.ltdIncome || 0).toLocaleString()}
+                        </span>
                       </div>
-                      <div className="bg-purple-500/10 p-2 rounded-lg text-center border border-purple-500/30">
-                        <span className="block text-[10px] text-purple-400 uppercase">Total</span>
-                        <span className="block text-white font-extrabold text-sm">₹{(selectedUserDetails.wallet?.totalIncome || 0).toLocaleString()}</span>
+                      <div className="bg-purple-500/10 p-2 rounded-xl text-center border border-purple-500/30">
+                        <span className="block text-[9px] text-purple-400 uppercase font-bold">Total</span>
+                        <span className="block text-purple-300 font-black text-xs mt-0.5">
+                          ₹{(selectedUserDetails.wallet?.totalIncome || 0).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. DEDICATED ACCOUNT GOVERNANCE & ACCESS CONTROL CARD */}
+                <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-md flex flex-col justify-between space-y-5">
+                  <div>
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+                      <h4 className="text-sm font-black text-white uppercase tracking-wider flex items-center space-x-2">
+                        <Shield className="w-4 h-4 text-[#31A9F6]" />
+                        <span>Account Governance</span>
+                      </h4>
+                      <span className="text-[10px] font-bold text-slate-400">Security Actions</span>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Status Control Action */}
+                      <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800/90 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-white flex items-center space-x-1.5">
+                            {selectedUserDetails.isBlocked ? (
+                              <Ban className="w-4 h-4 text-rose-400" />
+                            ) : (
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            )}
+                            <span>{selectedUserDetails.isBlocked ? "Account Restricted" : "Account Operational"}</span>
+                          </span>
+                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded uppercase ${
+                            selectedUserDetails.isBlocked ? "bg-rose-950 text-rose-300 border border-rose-800" : "bg-emerald-950 text-emerald-300 border border-emerald-800"
+                          }`}>
+                            {selectedUserDetails.isBlocked ? "Blocked" : "Active"}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 leading-relaxed">
+                          {selectedUserDetails.isBlocked
+                            ? "This user is restricted from signing in, trading, and making withdrawals."
+                            : "User has standard access to deposits, transfers, withdrawals, and selling."}
+                        </p>
+
+                        {selectedUserDetails.isBlocked ? (
+                          <button
+                            type="button"
+                            onClick={() => openUserActionModal(selectedUserDetails, "unblock")}
+                            className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center space-x-1.5"
+                          >
+                            <ShieldCheck className="w-4 h-4" />
+                            <span>Unblock & Restore Access</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => openUserActionModal(selectedUserDetails, "block")}
+                            className="w-full py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 font-bold text-xs transition-all cursor-pointer flex items-center justify-center space-x-1.5"
+                          >
+                            <Ban className="w-4 h-4" />
+                            <span>Block User Access</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Adjust Balance Action */}
+                      <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800/90 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-white flex items-center space-x-1.5">
+                            <PlusCircle className="w-4 h-4 text-[#31A9F6]" />
+                            <span>Manual Balance Adjustment</span>
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 leading-relaxed">
+                          Directly credit or debit INR, USDT-TRC20, or USDT-BEP20 balances for this user.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedUserForBalance(selectedUserDetails);
+                            setBalanceModalOpen(true);
+                          }}
+                          className="w-full py-2.5 rounded-xl bg-[#31A9F6]/10 hover:bg-[#31A9F6]/20 border border-[#31A9F6]/30 text-[#31A9F6] font-bold text-xs transition-all cursor-pointer flex items-center justify-center space-x-1.5"
+                        >
+                          <PlusCircle className="w-4 h-4" />
+                          <span>Adjust Wallet Balance</span>
+                        </button>
+                      </div>
+
+                      {/* Danger Zone: Permanent Delete */}
+                      <div className="p-3.5 rounded-xl bg-rose-950/20 border border-rose-900/60 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-rose-300 flex items-center space-x-1.5">
+                            <Trash2 className="w-4 h-4 text-rose-400" />
+                            <span>Danger Zone: Permanent Delete</span>
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 leading-relaxed">
+                          Irreversibly erase this user along with their wallets, transaction logs, and bank accounts.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => openUserActionModal(selectedUserDetails, "delete")}
+                          className="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center space-x-1.5"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>Delete User Account</span>
+                        </button>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Transaction History Table for this User */}
+              {/* USER TRANSACTION HISTORY TABLE */}
               <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-md overflow-hidden">
-                <div className="p-4 border-b border-slate-800">
-                  <h4 className="text-slate-200 text-sm font-bold uppercase tracking-wider flex items-center space-x-2">
-                    <History className="w-4 h-4 text-[#31A9F6]" />
-                    <span>Transaction History</span>
-                  </h4>
+                <div className="p-4 sm:p-5 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h4 className="text-slate-200 text-sm font-black uppercase tracking-wider flex items-center space-x-2">
+                      <History className="w-4 h-4 text-[#31A9F6]" />
+                      <span>Transaction History for {selectedUserDetails.name}</span>
+                    </h4>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Filter and review deposits, withdrawals, transfers, and sales for this user.
+                    </p>
+                  </div>
+
+                  {/* Transaction Type Filters */}
+                  <div className="flex items-center space-x-1 bg-slate-950 p-1 rounded-xl border border-slate-800/80 text-xs font-bold overflow-x-auto">
+                    {["all", "deposit", "withdrawal", "transfer", "sell"].map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setUserTxnFilter(type)}
+                        className={`px-3 py-1 rounded-lg capitalize transition-all cursor-pointer whitespace-nowrap ${
+                          userTxnFilter === type
+                            ? "bg-[#31A9F6] text-white shadow-sm"
+                            : "text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        {type === "all" ? "All Types" : type}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm text-slate-300">
-                    <thead className="bg-slate-950/80 text-xs uppercase font-semibold text-slate-500 border-b border-slate-800">
+                    <thead className="bg-slate-950/80 text-[11px] uppercase font-bold text-slate-400 border-b border-slate-800 tracking-wider">
                       <tr>
-                        <th className="px-4 py-3">Type</th>
-                        <th className="px-4 py-3">Amount</th>
-                        <th className="px-4 py-3">Status</th>
-                        <th className="px-4 py-3">Reference ID</th>
-                        <th className="px-4 py-3">Date</th>
+                        <th className="px-4 py-3.5">Type</th>
+                        <th className="px-4 py-3.5">Amount & Asset</th>
+                        <th className="px-4 py-3.5">Status</th>
+                        <th className="px-4 py-3.5">Reference ID</th>
+                        <th className="px-4 py-3.5">Timestamp</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800">
-                      {transactions.filter(t => t.userId === selectedUserDetails.userId).length === 0 ? (
+                    <tbody className="divide-y divide-slate-800/80">
+                      {transactions
+                        .filter((t) => t.userId === selectedUserDetails.userId)
+                        .filter((t) => (userTxnFilter === "all" ? true : t.type === userTxnFilter))
+                        .length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="px-4 py-8 text-center text-slate-500">No transactions found for this user.</td>
+                          <td colSpan={5} className="px-4 py-12 text-center text-slate-500 text-xs">
+                            <History className="w-8 h-8 mx-auto mb-2 text-slate-600 opacity-50" />
+                            No transactions found for this user with the selected filter.
+                          </td>
                         </tr>
                       ) : (
-                        transactions.filter(t => t.userId === selectedUserDetails.userId).map(t => (
-                          <tr key={t._id} className="hover:bg-slate-800/40 transition-colors">
-                            <td className="px-4 py-3 font-bold uppercase flex items-center space-x-2">
-                              {t.type === "deposit" ? <ArrowDownCircle className="w-4 h-4 text-emerald-400"/> : t.type === "withdrawal" ? <ArrowUpCircle className="w-4 h-4 text-purple-400"/> : <Activity className="w-4 h-4 text-[#31A9F6]" />}
-                              <span>{t.type}</span>
-                            </td>
-                            <td className="px-4 py-3 font-bold text-white">{t.amount} {t.asset}</td>
-                            <td className="px-4 py-3">
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                t.status === "pending" ? "bg-amber-500/10 text-amber-400 border border-amber-500/30" :
-                                t.status === "completed" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30" :
-                                "bg-rose-500/10 text-rose-400 border border-rose-500/30"
-                              }`}>
-                                {t.status.toUpperCase()}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-xs font-mono text-slate-400">{t.referenceId}</td>
-                            <td className="px-4 py-3 text-xs text-slate-400">{new Date(t.createdAt).toLocaleString()}</td>
-                          </tr>
-                        ))
+                        transactions
+                          .filter((t) => t.userId === selectedUserDetails.userId)
+                          .filter((t) => (userTxnFilter === "all" ? true : t.type === userTxnFilter))
+                          .map((t) => (
+                            <tr key={t._id} className="hover:bg-slate-800/30 transition-colors">
+                              <td className="px-4 py-3.5 font-bold uppercase text-xs">
+                                <div className="flex items-center space-x-2">
+                                  {t.type === "deposit" ? (
+                                    <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                                      <ArrowDownCircle className="w-4 h-4" />
+                                    </div>
+                                  ) : t.type === "withdrawal" ? (
+                                    <div className="w-7 h-7 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                                      <ArrowUpCircle className="w-4 h-4" />
+                                    </div>
+                                  ) : (
+                                    <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                                      <Activity className="w-4 h-4" />
+                                    </div>
+                                  )}
+                                  <span className="text-white">{t.type}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3.5 font-bold text-white text-xs">
+                                {t.amount} {t.asset}
+                              </td>
+                              <td className="px-4 py-3.5">
+                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide border ${
+                                  t.status === "pending"
+                                    ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                                    : t.status === "completed"
+                                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                    : "bg-rose-500/10 text-rose-400 border-rose-500/30"
+                                }`}>
+                                  {t.status}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3.5 text-xs font-mono text-slate-300">
+                                <div className="flex items-center space-x-1.5">
+                                  <span>{t.referenceId}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopy(t.referenceId, `tx-${t.referenceId}`)}
+                                    className="text-slate-500 hover:text-white cursor-pointer"
+                                    title="Copy Ref ID"
+                                  >
+                                    {copiedId === `tx-${t.referenceId}` ? (
+                                      <Check className="w-3 h-3 text-emerald-400" />
+                                    ) : (
+                                      <Copy className="w-3 h-3" />
+                                    )}
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3.5 text-xs text-slate-400">
+                                {new Date(t.createdAt).toLocaleString()}
+                              </td>
+                            </tr>
+                          ))
                       )}
                     </tbody>
                   </table>
