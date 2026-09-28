@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
     if (!adminId || typeof adminId !== "string" || adminId.trim() === "") {
       return NextResponse.json(
-        { success: false, message: "Please enter Admin ID." },
+        { success: false, message: "Please enter Admin ID or Email." },
         { status: 400 }
       );
     }
@@ -27,8 +27,13 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
 
-    // Admin accounts are created manually in the database; there are no default credentials
-    const admin = await Admin.findOne({ adminId: cleanAdminId });
+    // Admin accounts are created manually in the database; allow login via Admin ID or Email
+    const admin = await Admin.findOne({
+      $or: [
+        { adminId: cleanAdminId },
+        { email: cleanAdminId.toLowerCase() },
+      ],
+    });
 
     if (!admin) {
       return NextResponse.json(
