@@ -1,8 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ADMIN_COOKIE, verifyAdminSession } from "@/lib/adminSession";
 
-export function middleware(req: NextRequest) {
+// Admin API routes that must work without a session
+const PUBLIC_ADMIN_API_PATHS = ["/api/admin/auth/login", "/api/admin/auth/logout"];
+
+export async function middleware(req: NextRequest) {
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-pathname", req.nextUrl.pathname);
+  // Only this middleware may say which admin is calling
+  requestHeaders.delete("x-admin-id");
+
+  const pathname = req.nextUrl.pathname;
+  if (pathname.startsWith("/api/admin/") && !PUBLIC_ADMIN_API_PATHS.includes(pathname)) {
+    const session = await verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);
+    if (!session) {
+      return NextResponse.json(
+        { success: false, message: "Admin session expired. Please log in again." },
+        { status: 401 }
+      );
+    }
+    requestHeaders.set("x-admin-id", session.adminId);
+  }
 
   const userIdCookie = req.cookies.get("userId")?.value;
 

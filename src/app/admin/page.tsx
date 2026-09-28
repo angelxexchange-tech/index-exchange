@@ -9,17 +9,26 @@ export default function AdminPage() {
   const [adminUser, setAdminUser] = useState<any>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
+  // The server-side session is the source of truth; localStorage is only a profile cache
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("adminUser");
-      if (stored) {
-        setAdminUser(JSON.parse(stored));
+    const checkSession = async () => {
+      try {
+        const res = await fetch("/api/admin/auth/me", { cache: "no-store" });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          localStorage.setItem("adminUser", JSON.stringify(data.admin));
+          setAdminUser(data.admin);
+        } else {
+          localStorage.removeItem("adminUser");
+        }
+      } catch (e) {
+        console.error("Admin session check error:", e);
+      } finally {
+        setCheckingAuth(false);
       }
-    } catch (e) {
-      console.error("Failed to parse admin stored user:", e);
-    } finally {
-      setCheckingAuth(false);
-    }
+    };
+
+    checkSession();
   }, []);
 
   const handleLoginSuccess = (user: any) => {
@@ -33,7 +42,6 @@ export default function AdminPage() {
       console.error("Logout API error:", e);
     }
     localStorage.removeItem("adminUser");
-    document.cookie = "adminToken=; path=/; max-age=0;";
     setAdminUser(null);
   };
 

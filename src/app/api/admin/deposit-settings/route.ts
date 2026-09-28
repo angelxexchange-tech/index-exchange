@@ -1,46 +1,70 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import DepositSetting from "@/models/DepositSetting";
+import { AdminOtpError, consumeAdminOtp, getAdminOtpEmail } from "@/lib/adminOtp";
+import { depositChangeFingerprint, parseDepositChange } from "@/lib/depositSettings";
+import { sendMail } from "@/lib/mailer";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { depositAddress, qrImageData, network, explorerUrl, asset } = body;
-    const targetAsset = asset === "USDT-BEP20" ? "USDT-BEP20" : "USDT-TRC20";
-
-    if (!depositAddress || typeof depositAddress !== "string" || depositAddress.trim() === "") {
+    // Set by middleware from the verified admin session
+    const adminId = req.headers.get("x-admin-id");
+    if (!adminId) {
       return NextResponse.json(
-        { success: false, message: "Please enter a valid deposit wallet address." },
-        { status: 400 }
+        { success: false, message: "Admin session expired. Please log in again." },
+        { status: 401 }
       );
     }
 
-    if (!qrImageData || typeof qrImageData !== "string") {
-      return NextResponse.json(
-        { success: false, message: "Please upload a QR Code image file." },
-        { status: 400 }
-      );
+    const body = await req.json();
+    const change = parseDepositChange(body);
+    if (typeof change === "string") {
+      return NextResponse.json({ success: false, message: change }, { status: 400 });
     }
 
     await connectToDatabase();
 
-    let setting = await DepositSetting.findOne({ asset: targetAsset });
+    // The email OTP must have been issued for exactly this change
+    await consumeAdminOtp({
+      adminId,
+      purpose: "deposit-settings",
+      fingerprint: depositChangeFingerprint(change),
+      code: body.otp,
+    });
+
+    let setting = await DepositSetting.findOne({ asset: change.asset });
     if (!setting) {
       setting = new DepositSetting({
-        asset: targetAsset,
-        depositAddress: depositAddress.trim(),
-        qrImageData,
-        network: network?.trim() || (targetAsset === "USDT-BEP20" ? "Binance Smart Chain (BEP20)" : "TRON Network (TRC20)"),
-        explorerUrl: explorerUrl?.trim() || (targetAsset === "USDT-BEP20" ? "https://bscscan.com" : "https://tronscan.org"),
+        asset: change.asset,
+        depositAddress: change.depositAddress,
+        qrImageData: change.qrImageData,
+        network: change.network,
+        explorerUrl: change.explorerUrl,
       });
     } else {
-      setting.depositAddress = depositAddress.trim();
-      setting.qrImageData = qrImageData;
-      setting.network = network?.trim() || (targetAsset === "USDT-BEP20" ? "Binance Smart Chain (BEP20)" : "TRON Network (TRC20)");
-      setting.explorerUrl = explorerUrl?.trim() || (targetAsset === "USDT-BEP20" ? "https://bscscan.com" : "https://tronscan.org");
+      setting.depositAddress = change.depositAddress;
+      setting.qrImageData = change.qrImageData;
+      setting.network = change.network;
+      setting.explorerUrl = change.explorerUrl;
     }
 
     await setting.save();
+
+    try {
+      await sendMail({
+        to: getAdminOtpEmail(),
+        subject: `Deposit address changed for ${change.asset}`,
+        text: [
+          `The ${change.asset} deposit settings were changed by admin "${adminId}" at ${new Date().toISOString()}.`,
+          ``,
+          `New wallet address: ${change.depositAddress}`,
+          ``,
+          `If this was not you, log in and restore the correct address immediately.`,
+        ].join("\n"),
+      });
+    } catch (err) {
+      console.error("Deposit settings confirmation email error:", err);
+    }
 
     return NextResponse.json({
       success: true,
@@ -53,6 +77,9 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error: any) {
+    if (error instanceof AdminOtpError) {
+      return NextResponse.json({ success: false, message: error.message }, { status: error.status });
+    }
     console.error("Admin Deposit Settings POST error:", error);
     return NextResponse.json(
       { success: false, message: error?.message || "Failed to update deposit settings." },

@@ -47,10 +47,9 @@ export default function AdminLogin({ onLoginSuccess }: AdminLoginProps) {
         return;
       }
 
-      // Save to localStorage & notify parent
+      // Save to localStorage & notify parent (the session cookie is set by the server)
       localStorage.setItem("adminUser", JSON.stringify(data.admin));
-      document.cookie = `adminToken=admin_session_${data.admin.adminId}; path=/; max-age=604800; SameSite=Lax`;
-      
+
       onLoginSuccess(data.admin);
     } catch (err: any) {
       console.error("Admin Login Error:", err);
