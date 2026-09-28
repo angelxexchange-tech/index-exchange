@@ -102,7 +102,7 @@ export default function AdminLogin({ onLoginSuccess }: AdminLoginProps) {
           {/* Admin ID Input */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-300 ml-1">
-              Admin ID or Email
+              Admin ID
             </label>
             <div className="relative flex items-center">
               <div className="absolute left-3.5 text-slate-400">
@@ -110,7 +110,7 @@ export default function AdminLogin({ onLoginSuccess }: AdminLoginProps) {
               </div>
               <input
                 type="text"
-                placeholder="Enter Admin ID or Email"
+                placeholder="Enter Admin ID"
                 value={adminId}
                 onChange={(e) => setAdminId(e.target.value)}
                 autoComplete="off"
