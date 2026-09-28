@@ -97,6 +97,12 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
   const [depositSettingsAlert, setDepositSettingsAlert] = useState<{ type: "success" | "error"; msg: string } | null>(null);
   const [depositAssetType, setDepositAssetType] = useState<"USDT-TRC20" | "USDT-BEP20">("USDT-TRC20");
 
+  // Email OTP step for Deposit Settings (the code is tied to the exact asset/address/QR)
+  const [depositOtpSent, setDepositOtpSent] = useState(false);
+  const [depositOtpInput, setDepositOtpInput] = useState("");
+  const [depositOtpMaskedEmail, setDepositOtpMaskedEmail] = useState("");
+  const [depositOtpCooldown, setDepositOtpCooldown] = useState(0);
+
   // Admin Credentials Settings state
   const [settingsCurrentPass, setSettingsCurrentPass] = useState("");
   const [settingsNewAdminId, setSettingsNewAdminId] = useState(adminUser?.adminId || "admin");
@@ -151,19 +157,26 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
   const [userActionSubmitting, setUserActionSubmitting] = useState(false);
   const [userActionAlert, setUserActionAlert] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
+  // Admin API calls: a 401 means the server-side session expired, so go back to login
+  const adminFetch = async (input: string, init?: RequestInit) => {
+    const res = await fetch(input, init);
+    if (res.status === 401) onLogout();
+    return res;
+  };
+
   // Fetch all dashboard data
   const fetchData = async (isManualRefresh = false) => {
     if (isManualRefresh) setRefreshing(true);
     try {
       // 1. Stats & recent activity
-      const statsRes = await fetch("/api/admin/stats", { cache: "no-store" });
+      const statsRes = await adminFetch("/api/admin/stats", { cache: "no-store" });
       const statsData = await statsRes.json();
       if (statsData.success) {
         setStats(statsData.stats);
       }
 
       // 2. Users list
-      const usersRes = await fetch("/api/admin/users", { cache: "no-store" });
+      const usersRes = await adminFetch("/api/admin/users", { cache: "no-store" });
       const usersData = await usersRes.json();
       if (usersData.success) {
         const fetchedUsers = usersData.users || [];
@@ -175,7 +188,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
       }
 
       // 3. Transactions list
-      const txnRes = await fetch("/api/admin/transactions", { cache: "no-store" });
+      const txnRes = await adminFetch("/api/admin/transactions", { cache: "no-store" });
       const txnData = await txnRes.json();
       if (txnData.success) {
         setTransactions(txnData.transactions || []);
@@ -220,7 +233,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
     setSavingLimits(true);
 
     try {
-      const res = await fetch("/api/admin/withdrawal-settings", {
+      const res = await adminFetch("/api/admin/withdrawal-settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -243,9 +256,17 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
     }
   };
 
+  // A code only approves the details it was sent for, so any edit needs a new code
+  const resetDepositOtp = () => {
+    if (depositOtpSent) setDepositSettingsAlert(null);
+    setDepositOtpSent(false);
+    setDepositOtpInput("");
+  };
+
   const handleQrFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    resetDepositOtp();
 
     // Convert file to Base64 data URI string
     const reader = new FileReader();
@@ -257,8 +278,8 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
     reader.readAsDataURL(file);
   };
 
-  const handleSaveDepositSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Step 1: email a verification code for the current asset/address/QR
+  const requestDepositOtp = async () => {
     setDepositSettingsAlert(null);
 
     if (!depositAddressInput.trim()) {
@@ -274,7 +295,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
     setSavingDepositSettings(true);
 
     try {
-      const res = await fetch("/api/admin/deposit-settings", {
+      const res = await adminFetch("/api/admin/deposit-settings/request-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -286,8 +307,57 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
 
       const data = await res.json();
       if (!res.ok || !data.success) {
+        setDepositSettingsAlert({ type: "error", msg: data.message || "Failed to send verification code." });
+      } else {
+        setDepositOtpSent(true);
+        setDepositOtpInput("");
+        setDepositOtpMaskedEmail(data.maskedEmail || "");
+        setDepositOtpCooldown(60);
+        setDepositSettingsAlert({ type: "success", msg: data.message || "Verification code sent to your email." });
+      }
+    } catch (err) {
+      setDepositSettingsAlert({ type: "error", msg: "Network error sending verification code." });
+    } finally {
+      setSavingDepositSettings(false);
+    }
+  };
+
+  // Step 2: save with the emailed code
+  const handleSaveDepositSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!depositOtpSent) {
+      await requestDepositOtp();
+      return;
+    }
+
+    setDepositSettingsAlert(null);
+
+    if (!/^\d{6}$/.test(depositOtpInput.trim())) {
+      setDepositSettingsAlert({ type: "error", msg: "Enter the 6-digit verification code sent to your email." });
+      return;
+    }
+
+    setSavingDepositSettings(true);
+
+    try {
+      const res = await adminFetch("/api/admin/deposit-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          depositAddress: depositAddressInput.trim(),
+          qrImageData: qrImageDataInput,
+          asset: depositAssetType,
+          otp: depositOtpInput.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
         setDepositSettingsAlert({ type: "error", msg: data.message || "Failed to update deposit settings." });
       } else {
+        setDepositOtpSent(false);
+        setDepositOtpInput("");
         setDepositSettingsAlert({ type: "success", msg: `Deposit Wallet Address & QR Code saved to MongoDB for ${depositAssetType}!` });
       }
     } catch (err) {
@@ -296,6 +366,12 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
       setSavingDepositSettings(false);
     }
   };
+
+  useEffect(() => {
+    if (depositOtpCooldown <= 0) return;
+    const timer = setTimeout(() => setDepositOtpCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [depositOtpCooldown]);
 
   const handleSaveAdminSettings = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -319,7 +395,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
     setSavingAdminSettings(true);
 
     try {
-      const res = await fetch("/api/admin/auth/change-credentials", {
+      const res = await adminFetch("/api/admin/auth/change-credentials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -361,7 +437,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
         USDT: trcRate,
       };
 
-      const res = await fetch("/api/admin/rates", {
+      const res = await adminFetch("/api/admin/rates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rates: ratesToSave }),
@@ -426,7 +502,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
     setBalanceSubmitting(true);
 
     try {
-      const res = await fetch("/api/admin/users/balance", {
+      const res = await adminFetch("/api/admin/users/balance", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -464,7 +540,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
     setTxnSubmitting(true);
 
     try {
-      const res = await fetch("/api/admin/transactions/action", {
+      const res = await adminFetch("/api/admin/transactions/action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -516,7 +592,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
 
     try {
       const isDelete = userActionType === "delete";
-      const res = await fetch(isDelete ? "/api/admin/users/delete" : "/api/admin/users/status", {
+      const res = await adminFetch(isDelete ? "/api/admin/users/delete" : "/api/admin/users/status", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
@@ -1408,7 +1484,7 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                     <span>Deposit Wallet Address & QR Code Settings</span>
                   </h2>
                   <p className="text-xs text-slate-400">
-                    Upload your deposit QR Code image and enter your TRC20 wallet address. Values saved here update the user Deposit page immediately.
+                    Upload your deposit QR Code image and enter your TRC20 wallet address. Saving requires a verification code sent to the admin email, and values saved here update the user Deposit page immediately.
                   </p>
                 </div>
               </div>
@@ -1419,7 +1495,10 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                   <label className="text-xs font-semibold text-slate-300">Select Asset to Update</label>
                   <select
                     value={depositAssetType}
-                    onChange={(e) => setDepositAssetType(e.target.value as "USDT-TRC20" | "USDT-BEP20")}
+                    onChange={(e) => {
+                      resetDepositOtp();
+                      setDepositAssetType(e.target.value as "USDT-TRC20" | "USDT-BEP20");
+                    }}
                     className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-4 text-xs text-white font-bold outline-none focus:border-[#31A9F6]"
                   >
                     <option value="USDT-TRC20">USDT (TRC20)</option>
@@ -1435,7 +1514,10 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                     required
                     placeholder="e.g. TCD5c5uBFQ3KaaJR48BwWBYsLKCcozco8h"
                     value={depositAddressInput}
-                    onChange={(e) => setDepositAddressInput(e.target.value)}
+                    onChange={(e) => {
+                      resetDepositOtp();
+                      setDepositAddressInput(e.target.value);
+                    }}
                     className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl px-4 text-xs text-white font-mono font-bold outline-none focus:border-[#31A9F6]"
                   />
                 </div>
@@ -1465,6 +1547,37 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                   </div>
                 )}
 
+                {/* Email OTP Verification Step */}
+                {depositOtpSent && (
+                  <div className="space-y-2 p-4 bg-slate-950 border border-slate-800 rounded-xl animate-in fade-in duration-200">
+                    <label className="text-xs font-semibold text-slate-300 flex items-center space-x-1.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                      <span>Enter the 6-digit code sent to {depositOtpMaskedEmail || "the admin email"}</span>
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={6}
+                      placeholder="000000"
+                      value={depositOtpInput}
+                      onChange={(e) => setDepositOtpInput(e.target.value.replace(/\D/g, ""))}
+                      className="w-full h-11 bg-slate-900 border border-slate-800 rounded-xl px-4 text-center text-base tracking-[0.5em] text-white font-mono font-bold outline-none focus:border-[#31A9F6]"
+                    />
+                    <div className="flex items-center justify-between text-[11px] text-slate-400">
+                      <span>The code approves only the address & QR shown above.</span>
+                      <button
+                        type="button"
+                        onClick={requestDepositOtp}
+                        disabled={savingDepositSettings || depositOtpCooldown > 0}
+                        className="font-semibold text-[#31A9F6] hover:underline disabled:text-slate-500 disabled:no-underline disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        {depositOtpCooldown > 0 ? `Resend in ${depositOtpCooldown}s` : "Resend code"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {depositSettingsAlert && (
                   <div
                     className={`p-3.5 rounded-xl text-xs font-semibold text-center border animate-in fade-in duration-200 ${
@@ -1482,7 +1595,13 @@ export default function AdminDashboard({ adminUser, onLogout }: AdminDashboardPr
                   disabled={savingDepositSettings}
                   className="w-full h-12 rounded-xl bg-gradient-to-r from-[#3CB3FA] via-[#31A9F6] to-[#2099F3] text-white font-bold text-sm shadow-md hover:opacity-95 cursor-pointer"
                 >
-                  {savingDepositSettings ? "Saving Deposit Details to MongoDB..." : "Save Deposit Details to Database"}
+                  {depositOtpSent
+                    ? savingDepositSettings
+                      ? "Verifying & Saving to MongoDB..."
+                      : "Verify Code & Save Deposit Details"
+                    : savingDepositSettings
+                      ? "Sending Verification Code..."
+                      : "Send Verification Code to Email"}
                 </button>
               </form>
             </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import Admin from "@/models/Admin";
+import { ADMIN_COOKIE, adminCookieOptions, signAdminSession } from "@/lib/adminSession";
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,48 +27,10 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
 
-    // Check if default admin exists in DB, if not auto-seed default superadmin
-    let admin = await Admin.findOne({ adminId: cleanAdminId });
-
-    if (!admin && cleanAdminId === "admin") {
-      // Auto seed default admin
-      admin = await Admin.create({
-        adminId: "admin",
-        name: "Super Admin",
-        email: "admin@indexexchange.com",
-        password: "admin123",
-        role: "superadmin",
-      });
-    }
+    // Admin accounts are created manually in the database; there are no default credentials
+    const admin = await Admin.findOne({ adminId: cleanAdminId });
 
     if (!admin) {
-      // Direct credential fallback check if db write failed or custom credentials
-      if (cleanAdminId === "admin" && cleanPassword === "admin123") {
-        const response = NextResponse.json(
-          {
-            success: true,
-            admin: {
-              adminId: "admin",
-              name: "Super Admin",
-              email: "admin@indexexchange.com",
-              role: "superadmin",
-            },
-            message: "Admin Login Successful!",
-          },
-          { status: 200 }
-        );
-
-        response.cookies.set("adminToken", "admin_authenticated_session_token", {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          path: "/",
-          maxAge: 60 * 60 * 24 * 7, // 7 days
-        });
-
-        return response;
-      }
-
       return NextResponse.json(
         { success: false, message: "Invalid Admin ID or Password." },
         { status: 401 }
@@ -95,13 +58,7 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
 
-    response.cookies.set("adminToken", `admin_session_${admin.adminId}`, {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7,
-    });
+    response.cookies.set(ADMIN_COOKIE, await signAdminSession(admin.adminId), adminCookieOptions);
 
     return response;
   } catch (error: any) {

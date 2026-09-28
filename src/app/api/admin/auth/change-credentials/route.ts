@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import Admin from "@/models/Admin";
+import { ADMIN_COOKIE, adminCookieOptions, signAdminSession } from "@/lib/adminSession";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { adminId, currentPassword, newAdminId, newPassword, newName } = body;
+    const { currentPassword, newAdminId, newPassword, newName } = body;
+    // The account comes from the verified session (set by middleware), never from the request body
+    const adminId = req.headers.get("x-admin-id");
 
     if (!adminId || !currentPassword) {
       return NextResponse.json(
@@ -35,18 +38,7 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
 
-    let admin = await Admin.findOne({ adminId });
-
-    if (!admin && adminId === "admin") {
-      // Auto seed default admin if not existing yet
-      admin = await Admin.create({
-        adminId: "admin",
-        name: "Super Admin",
-        email: "admin@indexexchange.com",
-        password: "admin123",
-        role: "superadmin",
-      });
-    }
+    const admin = await Admin.findOne({ adminId });
 
     if (!admin) {
       return NextResponse.json(
@@ -96,13 +88,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Update cookie session if Admin ID changed
-    response.cookies.set("adminToken", `admin_session_${admin.adminId}`, {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7,
-    });
+    response.cookies.set(ADMIN_COOKIE, await signAdminSession(admin.adminId), adminCookieOptions);
 
     return response;
   } catch (error: any) {
