@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import Admin from "@/models/Admin";
 import { ADMIN_COOKIE, adminCookieOptions, signAdminSession } from "@/lib/adminSession";
+import bcrypt from "bcryptjs";
 
 export async function POST(req: NextRequest) {
   try {
@@ -47,7 +48,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (admin.password !== cleanCurrentPassword) {
+    let currentMatch = false;
+    if (admin.password) {
+      if (admin.password.startsWith("$2a$") || admin.password.startsWith("$2b$")) {
+        currentMatch = await bcrypt.compare(cleanCurrentPassword, admin.password);
+      } else {
+        currentMatch = admin.password === cleanCurrentPassword;
+      }
+    }
+
+    if (!currentMatch) {
       return NextResponse.json(
         { success: false, message: "Current password is incorrect. Access denied." },
         { status: 400 }
@@ -67,7 +77,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (cleanNewPassword) {
-      admin.password = cleanNewPassword;
+      admin.password = await bcrypt.hash(cleanNewPassword, 12);
     }
 
     if (cleanNewName) {

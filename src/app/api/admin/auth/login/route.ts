@@ -3,6 +3,8 @@ import { connectToDatabase } from "@/lib/db";
 import Admin from "@/models/Admin";
 import { ADMIN_COOKIE, adminCookieOptions, signAdminSession } from "@/lib/adminSession";
 
+import bcrypt from "bcryptjs";
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -10,7 +12,7 @@ export async function POST(req: NextRequest) {
 
     if (!adminId || typeof adminId !== "string" || adminId.trim() === "") {
       return NextResponse.json(
-        { success: false, message: "Please enter Admin ID." },
+        { success: false, message: "Please enter Admin ID or Email." },
         { status: 400 }
       );
     }
@@ -27,8 +29,13 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
 
-    // Admin accounts are created manually in the database; there are no default credentials
-    const admin = await Admin.findOne({ adminId: cleanAdminId });
+    // Admin accounts are created manually in the database; allow login via Admin ID or Email
+    const admin = await Admin.findOne({
+      $or: [
+        { adminId: cleanAdminId },
+        { email: cleanAdminId.toLowerCase() },
+      ],
+    });
 
     if (!admin) {
       return NextResponse.json(
@@ -37,7 +44,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (admin.password !== cleanPassword) {
+    let isMatch = false;
+    if (admin.password) {
+      if (admin.password.startsWith("$2a$") || admin.password.startsWith("$2b$")) {
+        isMatch = await bcrypt.compare(cleanPassword, admin.password);
+      } else {
+        // Fallback for legacy plaintext password, then auto-upgrade to bcrypt hash
+        isMatch = admin.password === cleanPassword;
+        if (isMatch) {
+          admin.password = await bcrypt.hash(cleanPassword, 12);
+          await admin.save();
+        }
+      }
+    }
+
+    if (!isMatch) {
       return NextResponse.json(
         { success: false, message: "Invalid Password. Access Denied." },
         { status: 401 }
