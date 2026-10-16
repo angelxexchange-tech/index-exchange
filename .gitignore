@@ -2,4 +2,16 @@ node_modules
 # local env files
 .env*.local
 .env
+.env.*
 .next
+
+# Temporary scripts & scratch files
+*.log
+*.pem
+*.key
+*.bak
+fix_*.js
+patch_*.py
+clean_*.py
+scratch/
+.DS_Store
